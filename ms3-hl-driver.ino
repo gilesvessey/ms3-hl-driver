@@ -32,29 +32,40 @@ void liquid_fill_mode(struct rgb colour) {
   while(true) {
     for (int led = 0; led < NUM_LEDS; led++) {
       if (led < pool) {
-        // start building the pool at one end
+
+        // render the pool at one end
         //
         leds[led] = CRGB(colour.r, colour.g, colour.b);
-      }else if (led == drip) {
+      } else if (led == drip) {
+
+        // fill in the drip
+        //
         leds[led] = CRGB(colour.r, colour.g, colour.b);
       } else {
-                leds[led] = CRGB(0, 0, 0);
-
-        }
+        
+        // otherwise a blank pixel
+        //
+        leds[led] = CRGB(0, 0, 0);
+      }
     }
+
     // change the leds
     //
     FastLED.show();
 
     if (pool == NUM_LEDS) {
+
       // the pool is full, reset
+      //
       pool = 0;
       drip = NUM_LEDS;
     }
 
     drip--;
     if (drip == pool) {
-      // the drip has landed in the pool
+
+      // the drip has landed, I repeat, the drip has landed
+      //
       pool++;
       drip = NUM_LEDS;
     }
@@ -66,29 +77,25 @@ void liquid_fill_mode(struct rgb colour) {
 }
 
 struct rgb rainbow(struct rgb value) {
+
   // return the next rgb value in the rainbow
   //
   if (value.r == 255 && value.g == 0 && value.b != 255) {
     value.b++;
     return value;
-  }
-  if (value.r != 0 && value.g == 0 && value.b == 255) {
+  } else if (value.r != 0 && value.g == 0 && value.b == 255) {
     value.r--;
     return value;
-  }
-  if (value.r == 0 && value.g != 255 && value.b == 255) {
+  } else if (value.r == 0 && value.g != 255 && value.b == 255) {
     value.g++;
     return value;
-  }
-  if (value.r == 0 && value.g == 255 && value.b != 0) {
+  } else if (value.r == 0 && value.g == 255 && value.b != 0) {
     value.b--;
     return value;
-  }
-  if (value.r != 255 && value.g == 255 && value.b == 0) {
+  } else if (value.r != 255 && value.g == 255 && value.b == 0) {
     value.r++;
     return value;
-  }
-  if (value.r == 255 && value.g != 0 && value.b == 0) {
+  } else if (value.r == 255 && value.g != 0 && value.b == 0) {
     value.g--;
     return value;
   }
