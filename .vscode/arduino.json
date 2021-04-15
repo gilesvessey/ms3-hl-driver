@@ -1,0 +1,6 @@
+{
+    "configuration": "cpu=atmega328",
+    "board": "arduino:avr:nano",
+    "sketch": "ms3-hl-driver.ino",
+    "port": "COM5"
+}
