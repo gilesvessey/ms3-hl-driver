@@ -4,6 +4,7 @@
 CRGB leds[NUM_LEDS];
 
 void setup() {
+  // Serial.begin(9600);  
   FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
 }
 
@@ -25,30 +26,18 @@ void solid_colour_mode(struct rgb colour) {
   FastLED.show();
 }
 
-void pulse_mode(struct rgb colour, int frequency, double speed) {
-  bool brightening = false;
-  struct rgb curr = colour;
-  while(true) {
-    for (int led = 0; led < NUM_LEDS; led++) {
-
-    }
-  }
-}
-
-void liquid_fill_mode(struct rgb colour, double speed) {
+struct ls { int pool; int drip; };
+struct ls liquid_fill_mode(struct rgb colour, double speed, struct ls state) {
   // TODO adjustable drip size, animation takes a long time and will only take longer with 144/m
   //
-  int pool = 0;
-  int drip = NUM_LEDS;
 
-  while(true) {
     for (int led = 0; led < NUM_LEDS; led++) {
-      if (led < pool) {
+      if (led < state.pool) {
 
         // render the pool at one end
         //
         leds[led] = CRGB(colour.r, colour.g, colour.b);
-      } else if (led == drip) {
+      } else if (led == state.drip) {
 
         // fill in the drip
         //
@@ -65,84 +54,104 @@ void liquid_fill_mode(struct rgb colour, double speed) {
     //
     FastLED.show();
 
-    if (pool == NUM_LEDS) {
+    if (state.pool == NUM_LEDS) {
 
       // the pool is full, reset
       //
-      pool = 0;
-      drip = NUM_LEDS;
+      state.pool = 0;
+      state.drip = NUM_LEDS;
     }
 
-    drip--;
-    if (drip == pool) {
+    state.drip--;
+    if (state.drip == state.pool) {
 
       // the drip has landed, I repeat, the drip has landed
       //
-      pool++;
-      drip = NUM_LEDS;
+      state.pool++;
+      state.drip = NUM_LEDS;
     }
 
-    // wait before we do it again
-    // range is 5 - 15
-    //
-    delay(5 + (10 * speed));     
-  }
+  return state;
 }
 
-void bounce_mode(struct rgb colour, bool isRainbow, double speed, int frequency) {
-  int ball = 0;
-  bool rising;
-  while(true) {
-    if (isRainbow) { 
-      for (int i = 0; i < frequency; i++) { colour = rainbow(colour); } 
-    }
-    for (int led = 0; led < NUM_LEDS; led++) {
-      if (led == ball) {
-        leds[led] = CRGB(colour.r, colour.g, colour.b);
-      } else {
-        leds[led] = CRGB(0, 0, 0);
-      }
-    }
-      
-      // change the leds
-      //
-      FastLED.show();
+struct bs { int ball; bool rising; struct rgb curr; };
+struct bs bounce_mode(bool isRainbow, int frequency, struct bs state) {
+  if (isRainbow) 
+    for (int i = 0; i < frequency; i++) state.curr = rainbow(state.curr);
 
-      // do bouncy ball things
-      //
-      if (ball == 0) { rising = true; }
-      if (ball == NUM_LEDS) { rising = false; }
-
-      if (rising) { ball++; }
-      else { ball--; }
-
-    // wait before we do it again
-    // range is 20 - 200ms
-    //
-    delay(20 + (180 * speed));  
+  for (int led = 0; led < NUM_LEDS; led++) {
+    if (led == state.ball) 
+      leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
+    else 
+      leds[led] = CRGB(0, 0, 0);
   }
+  
+  // change the leds
+  //
+  FastLED.show();
+
+  // do bouncy ball things
+  //
+  if (state.ball == 0) 
+    state.rising = true; 
+  else if (state.ball == NUM_LEDS) 
+    state.rising = false; 
+
+  if (state.rising) 
+    state.ball++; 
+  else 
+    state.ball--; 
+
+  return state;
 }
 
 struct rgb pulse(struct rgb colour, int frequency, struct rgb curr, bool brightening) {
   // frequency of 8 is 8/255ths change each tick
   //
-  double multiplier = 1 + (frequency / 255);
   if (brightening) {
-    curr.r = curr.r * multiplier; 
+    curr.r = curr.r + frequency; 
     if (curr.r > colour.r) { curr.r = colour.r; }
-    curr.g = curr.g * multiplier; 
+    curr.g = curr.g + frequency; 
     if (curr.g > colour.g) { curr.g = colour.g; }    
-    curr.b = curr.b * multiplier; 
+    curr.b = curr.b + frequency; 
     if (curr.b > colour.b) { curr.b = colour.b; }      
   } else {
-    curr.r = curr.r / multiplier; 
-    if (curr.r < colour.r) { curr.r = colour.r; }
-    curr.g = curr.g / multiplier; 
-    if (curr.g < colour.g) { curr.g = colour.g; }    
-    curr.b = curr.b / multiplier; 
-    if (curr.b < colour.b) { curr.b = colour.b; }  
+    curr.r = curr.r - frequency; 
+    if (curr.r < 0) { curr.r = 0; }
+    curr.g = curr.g - frequency; 
+    if (curr.g < 0) { curr.g = 0; }    
+    curr.b = curr.b - frequency; 
+    if (curr.b < 0) { curr.b = 0; }  
   }
   return curr;
+}
+struct ps { struct rgb curr; bool brightening; };
+struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
+  struct rgb curr = state.curr;
+  bool brightening = state.brightening;
+  for (int led = 0; led < NUM_LEDS; led++) {
+    if (curr.r == 0 && curr.g == 0 && curr.b == 0) {
+      brightening = true;
+      curr = pulse(colour, frequency, curr, brightening);           
+    } else if (curr.r == colour.r && curr.g == colour.g && curr.b == colour.b) {
+      brightening = false;
+    }
+
+    leds[led] = CRGB(curr.r, curr.g, curr.b);
+    curr = pulse(colour, frequency, curr, brightening); 
+  }
+
+  // progress in the sequence one more time so we shift on the next tick
+  state.curr = pulse(colour, frequency, state.curr, state.brightening); 
+    if (state.curr.r == colour.r && state.curr.g == colour.g && state.curr.b == colour.b) 
+      state.brightening = false;
+    else if (state.curr.r == 0 && state.curr.g == 0 && state.curr.b == 0) 
+      state.brightening = true;  
+  // change the leds
+  //
+  FastLED.show();
+
+  return state;
 }
 
 struct rgb rainbow(struct rgb value) {
@@ -170,10 +179,8 @@ struct rgb rainbow(struct rgb value) {
   }
 } 
 
-void rainbow_mode(double speed, int frequency) { 
-  struct rgb start = { 255, 0, 0 };
-  while (true) {
-    struct rgb colour = start;
+struct rgb rainbow_mode(double speed, int frequency, struct rgb state) { 
+    struct rgb colour = state;
     for (int led = 0; led < NUM_LEDS; led++) {
       leds[led] = CRGB(colour.r, colour.g, colour.b);
 
@@ -190,51 +197,54 @@ void rainbow_mode(double speed, int frequency) {
     // range is 4 to 12
     //
     int change_per_tick = 12 - (8 * speed);
-    for (int i = 0; i < change_per_tick; i++) { start = rainbow(start); }
+    for (int i = 0; i < change_per_tick; i++) { state = rainbow(state); }
     
-    // wait before we do it again
-    //
-    delay(25);  
-  }
+    return state;
 }
 
 void loop() {
-  struct rgb colour_1 = { 255, 255, 255 };
+  struct rgb colour_1 = { 255, 0, 255 };
 
-  struct rgb colour_2 = { 255, 0, 255 };
+  int mode = 1;  
 
-  // logic for changing modes on the fly will come later
-  //
-  int mode = 0;
-
-  switch (mode) {
-    case 0:
-      // mode 0 - solid colour
-      solid_colour_mode(colour_1);
-      break;
-    case 1:
-      // mode 1 - solid colour moving fade (like your plane is doing)
-      break;
-    case 2:
-      // mode 2 - single colour liquid fill
-      liquid_fill_mode(colour_1, 0.5);
-      break;
-    case 3:
-      // mode 3 - bouncing back and forth
-      bounce_mode(colour_1, true, 0.5, 8);
-      break;    
-    case 4:
-      // mode 4 - dual colour snake
-      break;
-    case 5:
-      // mode 5 - block breaking animation - tech challenge
-      break;
-    case 6:
-      // mode 6 - single colour strobe
-      break;      
-    case 7:
-      // mode 6 - rainbow, baby
-      rainbow_mode(0.5, 8);
-      break;      
+  struct ls liquid_state = { 0, NUM_LEDS };
+  struct rgb rainbow_state = { 255, 0, 0 };
+  struct bs bounce_state = { 0, true, { 255, 0, 0 } };
+  struct ps pulse_state = { { 255, 0, 255 }, false };
+  while(true) {
+    switch (mode) {
+      case 0:
+        // mode 0 - solid colour
+        solid_colour_mode(colour_1);
+        break;
+      case 1:
+        // mode 1 - solid colour moving fade
+        pulse_state = pulse_mode(colour_1, 6, pulse_state);
+        break;
+      case 2:
+        // mode 2 - single colour liquid fill
+        liquid_state = liquid_fill_mode(colour_1, 0.5, liquid_state);
+        break;
+      case 3:
+        // mode 3 - bouncing back and forth
+        bounce_state = bounce_mode(true, 8, bounce_state);
+        break;    
+      case 4:
+        // mode 4 - dual colour snake
+        break;
+      case 5:
+        // mode 5 - block breaking animation - tech challenge
+        break;
+      case 6:
+        // mode 6 - single colour strobe
+        break;      
+      case 7:
+        // mode 7 - rainbow, baby
+        rainbow_state = rainbow_mode(0.5, 8, rainbow_state);
+        break;      
+    }
+    // wait before we do it again
+    //
+    delay(25);
   }
 }
