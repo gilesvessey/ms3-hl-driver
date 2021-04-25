@@ -1,11 +1,19 @@
+#include <AltSoftSerial.h>
+AltSoftSerial BTserial; 
+
+char c=' ';
+boolean NL = true;
+
 #include <FastLED.h>
-#define LED_PIN     1
-#define NUM_LEDS    43
+#define LED_PIN     4
+#define NUM_LEDS    64
 CRGB leds[NUM_LEDS];
 
 void setup() {
-  // Serial.begin(9600);  
+  Serial.begin(9600);  
   FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
+  BTserial.begin(9600);  
+  Serial.println("BTserial started at 9600");  
 }
 
 // make a class that represents an RGB colour value
@@ -201,50 +209,74 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
     
     return state;
 }
-
+int mode = 3; 
+struct rgb colour_1 = { 255, 0, 255 };
+struct ls liquid_state = { 0, NUM_LEDS };
+struct rgb rainbow_state = { 255, 0, 0 };
+struct bs bounce_state = { 0, true, { 255, 0, 0 } };
+struct ps pulse_state = { { 255, 0, 255 }, false };
 void loop() {
-  struct rgb colour_1 = { 255, 0, 255 };
-
-  int mode = 1;  
-
-  struct ls liquid_state = { 0, NUM_LEDS };
-  struct rgb rainbow_state = { 255, 0, 0 };
-  struct bs bounce_state = { 0, true, { 255, 0, 0 } };
-  struct ps pulse_state = { { 255, 0, 255 }, false };
-  while(true) {
-    switch (mode) {
-      case 0:
-        // mode 0 - solid colour
-        solid_colour_mode(colour_1);
-        break;
-      case 1:
-        // mode 1 - solid colour moving fade
-        pulse_state = pulse_mode(colour_1, 6, pulse_state);
-        break;
-      case 2:
-        // mode 2 - single colour liquid fill
-        liquid_state = liquid_fill_mode(colour_1, 0.5, liquid_state);
-        break;
-      case 3:
-        // mode 3 - bouncing back and forth
-        bounce_state = bounce_mode(true, 8, bounce_state);
-        break;    
-      case 4:
-        // mode 4 - dual colour snake
-        break;
-      case 5:
-        // mode 5 - block breaking animation - tech challenge
-        break;
-      case 6:
-        // mode 6 - single colour strobe
-        break;      
-      case 7:
-        // mode 7 - rainbow, baby
-        rainbow_state = rainbow_mode(0.5, 8, rainbow_state);
-        break;      
-    }
-    // wait before we do it again
-    //
-    delay(25);
+  // Read from the Bluetooth module and send to the Arduino Serial Monitor
+  if (BTserial.available())
+  {
+      c = BTserial.read();
+      Serial.write(c);
+      if (isdigit(c)) mode = c - '0';
   }
+     // Read from the Serial Monitor and send to the Bluetooth module
+    if (Serial.available())
+    {
+        c = Serial.read();
+ 
+        Serial.write(c);
+ 
+        // do not send line end characters to the HM-10
+        if (c != 10 && c != 13) 
+        {  
+             BTserial.write(c);
+        }
+ 
+        // Echo the user input to the main window. 
+        // If there is a new line print the ">" character.
+        if (NL) Serial.print("\r\n>");  NL = false; 
+  
+        Serial.write(c);
+
+        if (c==10) NL = true;
+    }
+
+  switch (mode) {
+    case 0:
+      // mode 0 - solid colour
+      solid_colour_mode(colour_1);
+      break;
+    case 1:
+      // mode 1 - solid colour moving fade
+      pulse_state = pulse_mode(colour_1, 6, pulse_state);
+      break;
+    case 2:
+      // mode 2 - single colour liquid fill
+      liquid_state = liquid_fill_mode(colour_1, 0.5, liquid_state);
+      break;
+    case 3:
+      // mode 3 - bouncing back and forth
+      bounce_state = bounce_mode(true, 8, bounce_state);
+      break;    
+    case 4:
+      // mode 4 - dual colour snake
+      break;
+    case 5:
+      // mode 5 - block breaking animation - tech challenge
+      break;
+    case 6:
+      // mode 6 - single colour strobe
+      break;      
+    case 7:
+      // mode 7 - rainbow, baby
+      rainbow_state = rainbow_mode(0.5, 8, rainbow_state);
+      break;      
+  }
+  // wait before we do it again
+  //
+  delay(50);
 }
