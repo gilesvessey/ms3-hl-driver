@@ -1,8 +1,11 @@
+#include <Regexp.h>
+#include <string.h>
+
 #include <AltSoftSerial.h>
 AltSoftSerial BTserial; 
 
-char c=' ';
 boolean NL = true;
+char data[20];
 
 #include <FastLED.h>
 #define LED_PIN     4
@@ -216,34 +219,20 @@ struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { { 255, 0, 255 }, false };
 void loop() {
-  // Read from the Bluetooth module and send to the Arduino Serial Monitor
-  if (BTserial.available())
-  {
-      c = BTserial.read();
-      Serial.write(c);
-      if (isdigit(c)) mode = c - '0';
-  }
-     // Read from the Serial Monitor and send to the Bluetooth module
-    if (Serial.available())
-    {
-        c = Serial.read();
- 
-        Serial.write(c);
- 
-        // do not send line end characters to the HM-10
-        if (c != 10 && c != 13) 
-        {  
-             BTserial.write(c);
-        }
- 
-        // Echo the user input to the main window. 
-        // If there is a new line print the ">" character.
-        if (NL) Serial.print("\r\n>");  NL = false; 
-  
-        Serial.write(c);
+  // we need to be able to accept a command that sets colour
+  // and mode
+  // and frequency (denseness of flows)
+  // and speed (refresh rate)
+  // regexes would be cool
 
-        if (c==10) NL = true;
-    }
+  // clear the input value
+  memset(data, 0, 20);
+
+  // gather the input string
+  for (int i = 0; BTserial.available(); i++) data[i] = BTserial.read();
+
+  // echo the input to the serial monitor
+  if (strlen(data) > 0) Serial.print(data);
 
   switch (mode) {
     case 0:
