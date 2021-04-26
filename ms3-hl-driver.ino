@@ -232,7 +232,57 @@ void loop() {
   for (int i = 0; BTserial.available(); i++) data[i] = BTserial.read();
 
   // echo the input to the serial monitor
-  if (strlen(data) > 0) Serial.print(data);
+  if (strlen(data) > 0) {
+    Serial.print(data);
+    if (data[0] == 'm' || data[0] == 'M') {
+      // set the mode, 'm 0'
+      mode = data[2] - '0';
+    }
+    if (data[0] == 'c' || data[0] == 'C') {
+      // set the colour, 'c 255 0 255'
+      struct rgb colour = { 256, 256, 256 };
+      char buff[3];
+      // start at the third char, build a number, if you see a space then save it as the right colour
+      for (int i = 2; i < strlen(data); i++) {
+        if (data[i] == ' ') {
+            Serial.write("detected a space, buffer is:");
+            Serial.write(buff);
+          String str = String(buff);
+          int value = str.toInt();
+          if (colour.r == 256) {
+
+            colour.r = value; 
+            Serial.write("setting red to: ");
+            Serial.write(value);
+          }
+          else if (colour.g == 256) { 
+            colour.g = value; 
+            Serial.write("setting green to: ");
+            Serial.write(value);            
+          }
+          else if (colour.b == 256) {
+            colour.b = value; 
+            Serial.write("setting blue to: ");
+            Serial.write(value);            
+          }
+          memset(buff, 0, 3);  
+          i++;                          
+        }
+        buff[strlen(buff)] = data[i]; 
+      }
+      if (colour.r != 256 && colour.g != 256 && colour.b != 256) {
+        Serial.write("setting colour to: ");
+        Serial.write(colour.r);
+        Serial.write(colour.g);
+        Serial.write(colour.b);
+         
+        // all of the colour values have been set
+        //
+
+        colour_1 = colour;
+      }
+    }    
+  }
 
   switch (mode) {
     case 0:
