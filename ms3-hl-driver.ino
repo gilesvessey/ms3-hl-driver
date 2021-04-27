@@ -227,8 +227,10 @@ void loop() {
   // gather the input string
   for (int i = 0; BTserial.available(); i++) {
     data[i] = BTserial.read();
-    // idk
-    delay(10);
+    // wait before reading another byte, processor speed is faster than serial sending speed
+    // so this ensures that we read 100% of an incoming command
+    //
+    delay(1);
   }
 
   if (strlen(data) > 0) {
