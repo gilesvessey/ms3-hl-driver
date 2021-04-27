@@ -1,12 +1,11 @@
 #include <Regexp.h>
 #include <string.h>
 
-// #include <AltSoftSerial.h>
-// AltSoftSerial BTserial; 
+#include <AltSoftSerial.h>
+AltSoftSerial BTserial; 
 
-#include <SoftwareSerial.h>
-
-SoftwareSerial BTserial(8, 9);
+// #include <SoftwareSerial.h>
+// SoftwareSerial BTserial(8, 9);
 
 boolean NL = true;
 char data[20];
@@ -18,9 +17,9 @@ CRGB leds[NUM_LEDS];
 
 void setup() {
   Serial.begin(9600);  
+  BTserial.begin(9600);    
   FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
-  BTserial.begin(9600);  
-  Serial.println("BTserial started at 9600");  
+  Serial.println("ms3-hl-driver 1.0.0");  
 }
 
 // make a class that represents an RGB colour value
@@ -35,9 +34,6 @@ void solid_colour_mode(struct rgb colour) {
   for (int led = 0; led < NUM_LEDS; led++) {
     leds[led] = CRGB(colour.r, colour.g, colour.b);
   }
-
-  // change the leds
-  //  
   FastLED.show();
 }
 
@@ -64,9 +60,6 @@ struct ls liquid_fill_mode(struct rgb colour, double speed, struct ls state) {
         leds[led] = CRGB(0, 0, 0);
       }
     }
-
-    // change the leds
-    //
     FastLED.show();
 
     if (state.pool == NUM_LEDS) {
@@ -101,8 +94,6 @@ struct bs bounce_mode(bool isRainbow, int frequency, struct bs state) {
       leds[led] = CRGB(0, 0, 0);
   }
   
-  // change the leds
-  //
   FastLED.show();
 
   // do bouncy ball things
@@ -125,21 +116,22 @@ struct rgb pulse(struct rgb colour, int frequency, struct rgb curr, bool brighte
   //
   if (brightening) {
     curr.r = curr.r + frequency; 
-    if (curr.r > colour.r) { curr.r = colour.r; }
+    if (curr.r > colour.r) curr.r = colour.r;
     curr.g = curr.g + frequency; 
-    if (curr.g > colour.g) { curr.g = colour.g; }    
+    if (curr.g > colour.g) curr.g = colour.g;    
     curr.b = curr.b + frequency; 
-    if (curr.b > colour.b) { curr.b = colour.b; }      
+    if (curr.b > colour.b) curr.b = colour.b;      
   } else {
     curr.r = curr.r - frequency; 
-    if (curr.r < 0) { curr.r = 0; }
+    if (curr.r < 0) curr.r = 0;
     curr.g = curr.g - frequency; 
-    if (curr.g < 0) { curr.g = 0; }    
+    if (curr.g < 0) curr.g = 0;    
     curr.b = curr.b - frequency; 
-    if (curr.b < 0) { curr.b = 0; }  
+    if (curr.b < 0) curr.b = 0;  
   }
   return curr;
 }
+
 struct ps { struct rgb curr; bool brightening; };
 struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
   struct rgb curr = state.curr;
@@ -157,13 +149,13 @@ struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
   }
 
   // progress in the sequence one more time so we shift on the next tick
-  state.curr = pulse(colour, frequency, state.curr, state.brightening); 
-    if (state.curr.r == colour.r && state.curr.g == colour.g && state.curr.b == colour.b) 
-      state.brightening = false;
-    else if (state.curr.r == 0 && state.curr.g == 0 && state.curr.b == 0) 
-      state.brightening = true;  
-  // change the leds
   //
+  state.curr = pulse(colour, frequency, state.curr, state.brightening); 
+  if (state.curr.r == colour.r && state.curr.g == colour.g && state.curr.b == colour.b) 
+    state.brightening = false;
+  else if (state.curr.r == 0 && state.curr.g == 0 && state.curr.b == 0) 
+    state.brightening = true;  
+
   FastLED.show();
 
   return state;
@@ -191,30 +183,30 @@ struct rgb rainbow(struct rgb value) {
   } else if (value.r == 255 && value.g != 0 && value.b == 0) {
     value.g--;
     return value;
+  } else {
+
+    // a value was supplied that is not a part of the rainbow sequence, set it to red to get it started
+    //
+    struct rgb start = { 255, 0, 0 };
+    return start;
   }
 } 
 
 struct rgb rainbow_mode(double speed, int frequency, struct rgb state) { 
-    struct rgb colour = state;
-    for (int led = 0; led < NUM_LEDS; led++) {
-      leds[led] = CRGB(colour.r, colour.g, colour.b);
+  struct rgb colour = state;
 
-      // this is how tightly packed the rainbow will be
-      //
-      for (int i = 0; i < frequency; i++) { colour = rainbow(colour); }
-    }
-    
-    // change the leds
+  for (int led = 0; led < NUM_LEDS; led++) {
+    leds[led] = CRGB(colour.r, colour.g, colour.b);
+
+    // this is how tightly packed the rainbow will be
     //
-    FastLED.show();
-      
-    // progress each led in the rainbow sequence for the next update
-    // range is 4 to 12
-    //
-    int change_per_tick = 12 - (8 * speed);
-    for (int i = 0; i < change_per_tick; i++) { state = rainbow(state); }
+    for (int i = 0; i < frequency; i++) { colour = rainbow(colour); }
+  }
+  FastLED.show();
     
-    return state;
+  for (int i = 0; i < 8; i++) { state = rainbow(state); }
+  
+  return state;
 }
 int mode = 3; 
 struct rgb colour_1 = { 255, 0, 255 };
@@ -233,20 +225,36 @@ void loop() {
   memset(data, 0, 20);
 
   // gather the input string
-  for (int i = 0; BTserial.available(); i++) data[i] = BTserial.read();
+  for (int i = 0; BTserial.available(); i++) {
+    data[i] = BTserial.read();
+    // idk
+    delay(10);
+  }
 
   if (strlen(data) > 0) {
     Serial.println("Received data via bluetooth:");
     Serial.println(data);
     if (data[0] == 'm' || data[0] == 'M') {
+
       // set the mode, 'm 0'
+      //
       mode = data[2] - '0';
     }
     if (data[0] == 'c' || data[0] == 'C') {
+
       // set the colour, 'c 255 0 255'
+      //
+
+      // ISSUES: (works 60% of the time)
+      // sometimes the incoming data is split into two occurences, neither of which are interpretable
+      // sometimes even though the correct value is read over bluetooth, the parsing is demonstrating inconsistent results somehow
+      //
       struct rgb colour = { 256, 256, 256 };
+      // clear the buffer for the next colour change
+      //    
       char buff[4];
-      // convoluted way of reading three space delimited integers
+      memset(buff, 0, 4);        
+      // convoluted way of reading three integers delimited by spaces
       //
       for (int i = 2; i < strlen(data); i++) {
         if (data[i] == ' ') {
@@ -255,8 +263,10 @@ void loop() {
           else if (colour.g == 256) colour.g = atoi(buff);
           else if (colour.b == 256) colour.b = atoi(buff);          
           // clear the buffer for the next number
+          //
           memset(buff, 0, 4);  
-          // don't ingest the space
+          // skip over the space
+          //
           i++;                          
         }
         buff[strlen(buff)] = data[i]; 
@@ -270,6 +280,7 @@ void loop() {
         Serial.println(colour.b);
         colour_1 = colour;
       }
+
     }    
   }
 
