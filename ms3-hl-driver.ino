@@ -1,8 +1,12 @@
 #include <Regexp.h>
 #include <string.h>
 
-#include <AltSoftSerial.h>
-AltSoftSerial BTserial; 
+// #include <AltSoftSerial.h>
+// AltSoftSerial BTserial; 
+
+#include <SoftwareSerial.h>
+
+SoftwareSerial BTserial(8, 9);
 
 boolean NL = true;
 char data[20];
@@ -218,12 +222,12 @@ struct ls liquid_state = { 0, NUM_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { { 255, 0, 255 }, false };
+
 void loop() {
   // we need to be able to accept a command that sets colour
   // and mode
   // and frequency (denseness of flows)
   // and speed (refresh rate)
-  // regexes would be cool
 
   // clear the input value
   memset(data, 0, 20);
@@ -231,9 +235,9 @@ void loop() {
   // gather the input string
   for (int i = 0; BTserial.available(); i++) data[i] = BTserial.read();
 
-  // echo the input to the serial monitor
   if (strlen(data) > 0) {
-    Serial.print(data);
+    Serial.println("Received data via bluetooth:");
+    Serial.println(data);
     if (data[0] == 'm' || data[0] == 'M') {
       // set the mode, 'm 0'
       mode = data[2] - '0';
@@ -241,44 +245,29 @@ void loop() {
     if (data[0] == 'c' || data[0] == 'C') {
       // set the colour, 'c 255 0 255'
       struct rgb colour = { 256, 256, 256 };
-      char buff[3];
-      // start at the third char, build a number, if you see a space then save it as the right colour
+      char buff[4];
+      // convoluted way of reading three space delimited integers
+      //
       for (int i = 2; i < strlen(data); i++) {
         if (data[i] == ' ') {
-            Serial.write("detected a space, buffer is:");
-            Serial.write(buff);
-          String str = String(buff);
-          int value = str.toInt();
-          if (colour.r == 256) {
-
-            colour.r = value; 
-            Serial.write("setting red to: ");
-            Serial.write(value);
-          }
-          else if (colour.g == 256) { 
-            colour.g = value; 
-            Serial.write("setting green to: ");
-            Serial.write(value);            
-          }
-          else if (colour.b == 256) {
-            colour.b = value; 
-            Serial.write("setting blue to: ");
-            Serial.write(value);            
-          }
-          memset(buff, 0, 3);  
+          buff[strlen(buff)] = '\0';
+          if (colour.r == 256) colour.r = atoi(buff);
+          else if (colour.g == 256) colour.g = atoi(buff);
+          else if (colour.b == 256) colour.b = atoi(buff);          
+          // clear the buffer for the next number
+          memset(buff, 0, 4);  
+          // don't ingest the space
           i++;                          
         }
         buff[strlen(buff)] = data[i]; 
       }
-      if (colour.r != 256 && colour.g != 256 && colour.b != 256) {
-        Serial.write("setting colour to: ");
-        Serial.write(colour.r);
-        Serial.write(colour.g);
-        Serial.write(colour.b);
-         
+      if (colour.r != 256 && colour.g != 256 && colour.b != 256) {  
         // all of the colour values have been set
         //
-
+        Serial.println("setting colour to: ");
+        Serial.println(colour.r);
+        Serial.println(colour.g);
+        Serial.println(colour.b);
         colour_1 = colour;
       }
     }    
