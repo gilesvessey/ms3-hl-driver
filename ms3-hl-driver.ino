@@ -12,7 +12,9 @@ char data[20];
 
 #include <FastLED.h>
 #define LED_PIN     4
-#define NUM_LEDS    64
+#define NUM_LEDS    100
+#define NUM_HALO_LEDS 32
+
 CRGB leds[NUM_LEDS];
 
 void setup() {
@@ -30,10 +32,20 @@ struct rgb {
   int b;  
 };
 
-void solid_colour_mode(struct rgb colour) {
+void solid_colour_mode(struct rgb strip, struct rgb halo) {
+
+  // set the led strip colour
+  //
   for (int led = 0; led < NUM_LEDS; led++) {
-    leds[led] = CRGB(colour.r, colour.g, colour.b);
+    leds[led] = CRGB(strip.r, strip.g, strip.b);
   }
+
+  // set the halo colour
+  //
+  for (int led = NUM_LEDS; led < NUM_LEDS + NUM_HALO_LEDS; led++) {
+    leds[led] = CRGB(halo.r, halo.g, halo.b);
+  }  
+
   FastLED.show();
 }
 
@@ -132,7 +144,7 @@ struct rgb pulse(struct rgb colour, int frequency, struct rgb curr, bool brighte
   return curr;
 }
 
-struct ps { struct rgb curr; bool brightening; };
+struct ps { bool brightening; struct rgb curr; };
 struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
   struct rgb curr = state.curr;
   bool brightening = state.brightening;
@@ -208,12 +220,53 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
   
   return state;
 }
+
+struct rgb read_rgb(char data[], int first_digit) {
+  // set the colour, 'c 255 0 255'
+  //
+  struct rgb colour = { 256, 256, 256 };
+  // clear the buffer for the next colour change
+  //    
+  char buff[4];
+  memset(buff, 0, 4);        
+  // convoluted way of reading three integers delimited by spaces
+  //
+  for (int i = first_digit; i < strlen(data); i++) {
+    if (data[i] == ' ') {
+      buff[strlen(buff)] = '\0';
+      if (colour.r == 256) colour.r = atoi(buff);
+      else if (colour.g == 256) colour.g = atoi(buff);
+      else if (colour.b == 256) colour.b = atoi(buff);          
+      // clear the buffer for the next number
+      //
+      memset(buff, 0, 4);  
+      // skip over the space
+      //
+      i++;                          
+    }
+    buff[strlen(buff)] = data[i]; 
+  }
+
+  if (colour.r != 256 && colour.g != 256 && colour.b != 256) {  
+    // all values set
+    //
+    return colour;
+  } else {
+    // something went wrong
+    //
+    struct rgb fallback = { 255, 255, 255};
+    return fallback;
+  }
+}
+
 int mode = 3; 
-struct rgb colour_1 = { 255, 0, 255 };
+struct rgb colour_strip = { 255, 0, 255 };
+struct rgb colour_halo = { 255, 0, 255 };
+
 struct ls liquid_state = { 0, NUM_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
-struct ps pulse_state = { { 255, 0, 255 }, false };
+struct ps pulse_state = { false, { 255, 0, 0 } };
 
 void loop() {
   // we need to be able to accept a command that sets colour
@@ -243,61 +296,33 @@ void loop() {
       mode = data[2] - '0';
     }
     if (data[0] == 'c' || data[0] == 'C') {
-
-      // set the colour, 'c 255 0 255'
-      //
-
-      // ISSUES: (works 60% of the time)
-      // sometimes the incoming data is split into two occurences, neither of which are interpretable
-      // sometimes even though the correct value is read over bluetooth, the parsing is demonstrating inconsistent results somehow
-      //
-      struct rgb colour = { 256, 256, 256 };
-      // clear the buffer for the next colour change
-      //    
-      char buff[4];
-      memset(buff, 0, 4);        
-      // convoluted way of reading three integers delimited by spaces
-      //
-      for (int i = 2; i < strlen(data); i++) {
-        if (data[i] == ' ') {
-          buff[strlen(buff)] = '\0';
-          if (colour.r == 256) colour.r = atoi(buff);
-          else if (colour.g == 256) colour.g = atoi(buff);
-          else if (colour.b == 256) colour.b = atoi(buff);          
-          // clear the buffer for the next number
-          //
-          memset(buff, 0, 4);  
-          // skip over the space
-          //
-          i++;                          
-        }
-        buff[strlen(buff)] = data[i]; 
+      switch(data[1]) {
+        case 's': // set the strip
+          colour_strip = read_rgb(data, 3);
+          break;
+        case 'h': // set the halo
+          colour_halo = read_rgb(data, 3);
+          break;
+        case ' ': // none specified, set both
+          colour_strip = read_rgb(data, 2);
+          colour_halo = colour_strip;
+          break;
       }
-      if (colour.r != 256 && colour.g != 256 && colour.b != 256) {  
-        // all of the colour values have been set
-        //
-        Serial.println("setting colour to: ");
-        Serial.println(colour.r);
-        Serial.println(colour.g);
-        Serial.println(colour.b);
-        colour_1 = colour;
-      }
-
-    }    
+    }  
   }
 
   switch (mode) {
     case 0:
       // mode 0 - solid colour
-      solid_colour_mode(colour_1);
+      solid_colour_mode(colour_strip, colour_halo);
       break;
     case 1:
       // mode 1 - solid colour moving fade
-      pulse_state = pulse_mode(colour_1, 6, pulse_state);
+      pulse_state = pulse_mode(colour_strip, 6, pulse_state);
       break;
     case 2:
       // mode 2 - single colour liquid fill
-      liquid_state = liquid_fill_mode(colour_1, 0.5, liquid_state);
+      liquid_state = liquid_fill_mode(colour_strip, 0.5, liquid_state);
       break;
     case 3:
       // mode 3 - bouncing back and forth
@@ -319,5 +344,5 @@ void loop() {
   }
   // wait before we do it again
   //
-  delay(50);
+  delay(25);
 }
