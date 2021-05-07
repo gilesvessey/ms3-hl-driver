@@ -1,26 +1,23 @@
 #include <Regexp.h>
 #include <string.h>
-
 #include <AltSoftSerial.h>
+#include <FastLED.h>
+#define DRIVER_PIN 4
+#define PASS_PIN 5
+#define STRIP_LEDS 59
+#define HALO_LEDS 32
+#define ALL_LEDS 91
+
 AltSoftSerial BTserial; 
-
-// #include <SoftwareSerial.h>
-// SoftwareSerial BTserial(8, 9);
-
+CRGB leds[ALL_LEDS];
 boolean NL = true;
 char data[20];
 
-#include <FastLED.h>
-#define LED_PIN     4
-#define NUM_LEDS    100
-#define NUM_HALO_LEDS 32
-
-CRGB leds[NUM_LEDS];
-
 void setup() {
   Serial.begin(9600);  
-  BTserial.begin(9600);    
-  FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
+  BTserial.begin(9600);
+  FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(leds, ALL_LEDS); 
+  FastLED.addLeds<WS2812, PASS_PIN, GRB>(leds, ALL_LEDS);
   Serial.println("ms3-hl-driver 1.0.0");  
 }
 
@@ -36,13 +33,13 @@ void solid_colour_mode(struct rgb strip, struct rgb halo) {
 
   // set the led strip colour
   //
-  for (int led = 0; led < NUM_LEDS; led++) {
+  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
     leds[led] = CRGB(strip.r, strip.g, strip.b);
   }
 
   // set the halo colour
   //
-  for (int led = NUM_LEDS; led < NUM_LEDS + NUM_HALO_LEDS; led++) {
+  for (int led = 0; led < HALO_LEDS; led++) {
     leds[led] = CRGB(halo.r, halo.g, halo.b);
   }  
 
@@ -50,69 +47,83 @@ void solid_colour_mode(struct rgb strip, struct rgb halo) {
 }
 
 struct ls { int pool; int drip; };
-struct ls liquid_fill_mode(struct rgb colour, double speed, struct ls state) {
+struct ls liquid_fill_mode(struct rgb strip, struct rgb halo, double speed, struct ls state) {
   // TODO adjustable drip size, animation takes a long time and will only take longer with 144/m
   //
 
-    for (int led = 0; led < NUM_LEDS; led++) {
-      if (led < state.pool) {
+  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
+    if (led < state.pool) {
 
-        // render the pool at one end
-        //
-        leds[led] = CRGB(colour.r, colour.g, colour.b);
-      } else if (led == state.drip) {
-
-        // fill in the drip
-        //
-        leds[led] = CRGB(colour.r, colour.g, colour.b);
-      } else {
-
-        // otherwise a blank pixel
-        //
-        leds[led] = CRGB(0, 0, 0);
-      }
-    }
-    FastLED.show();
-
-    if (state.pool == NUM_LEDS) {
-
-      // the pool is full, reset
+      // render the pool at one end
       //
-      state.pool = 0;
-      state.drip = NUM_LEDS;
-    }
+      leds[led] = CRGB(strip.r, strip.g, strip.b);
+    } else if (led == state.drip) {
 
-    state.drip--;
-    if (state.drip == state.pool) {
-
-      // the drip has landed, I repeat, the drip has landed
+      // fill in the drip
       //
-      state.pool++;
-      state.drip = NUM_LEDS;
+      leds[led] = CRGB(strip.r, strip.g, strip.b);
+    } else {
+
+      // otherwise a blank pixel
+      //
+      leds[led] = CRGB(0, 0, 0);
     }
+  }
+  FastLED.show();
+
+  if (state.pool == ALL_LEDS) {
+
+    // the pool is full, reset
+    //
+    state.pool = HALO_LEDS;
+    state.drip = ALL_LEDS;
+  }
+
+  state.drip--;
+  if (state.drip == state.pool) {
+
+    // the drip has landed, I repeat, the drip has landed
+    //
+    state.pool++;
+    state.drip = ALL_LEDS;
+  }
+
+  // set the halo colour
+  //
+  for (int led = 0; led < HALO_LEDS; led++) {
+    leds[led] = CRGB(halo.r, halo.g, halo.b);
+  }  
 
   return state;
 }
 
 struct bs { int ball; bool rising; struct rgb curr; };
-struct bs bounce_mode(bool isRainbow, int frequency, struct bs state) {
+struct bs bounce_mode(bool isRainbow, int frequency, struct rgb halo, struct bs state) {
   if (isRainbow) 
     for (int i = 0; i < frequency; i++) state.curr = rainbow(state.curr);
 
-  for (int led = 0; led < NUM_LEDS; led++) {
+  // set the strip
+  //
+  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
     if (led == state.ball) 
       leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
     else 
       leds[led] = CRGB(0, 0, 0);
+  }
+
+  // set the halo
+  //
+  for (int led = 0; led < HALO_LEDS; led++) {
+    leds[led] = CRGB(halo.r, halo.g, halo.b);
   }
   
   FastLED.show();
 
   // do bouncy ball things
   //
-  if (state.ball == 0) 
+  if (state.ball == HALO_LEDS) 
     state.rising = true; 
-  else if (state.ball == NUM_LEDS) 
+  else if (state.ball == ALL_LEDS) 
     state.rising = false; 
 
   if (state.rising) 
@@ -148,7 +159,7 @@ struct ps { bool brightening; struct rgb curr; };
 struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
   struct rgb curr = state.curr;
   bool brightening = state.brightening;
-  for (int led = 0; led < NUM_LEDS; led++) {
+  for (int led = 0; led < ALL_LEDS; led++) {
     if (curr.r == 0 && curr.g == 0 && curr.b == 0) {
       brightening = true;
       curr = pulse(colour, frequency, curr, brightening);           
@@ -207,7 +218,7 @@ struct rgb rainbow(struct rgb value) {
 struct rgb rainbow_mode(double speed, int frequency, struct rgb state) { 
   struct rgb colour = state;
 
-  for (int led = 0; led < NUM_LEDS; led++) {
+  for (int led = 0; led < ALL_LEDS; led++) {
     leds[led] = CRGB(colour.r, colour.g, colour.b);
 
     // this is how tightly packed the rainbow will be
@@ -259,11 +270,15 @@ struct rgb read_rgb(char data[], int first_digit) {
   }
 }
 
-int mode = 3; 
+// DEFAULTS
+//
+int mode = 7; 
 struct rgb colour_strip = { 255, 0, 255 };
 struct rgb colour_halo = { 255, 0, 255 };
 
-struct ls liquid_state = { 0, NUM_LEDS };
+// state for each mode that requires it
+//
+struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { false, { 255, 0, 0 } };
@@ -322,11 +337,11 @@ void loop() {
       break;
     case 2:
       // mode 2 - single colour liquid fill
-      liquid_state = liquid_fill_mode(colour_strip, 0.5, liquid_state);
+      liquid_state = liquid_fill_mode(colour_strip, colour_halo, 0.5, liquid_state);
       break;
     case 3:
       // mode 3 - bouncing back and forth
-      bounce_state = bounce_mode(true, 8, bounce_state);
+      bounce_state = bounce_mode(true, 8, colour_halo, bounce_state);
       break;    
     case 4:
       // mode 4 - dual colour snake
