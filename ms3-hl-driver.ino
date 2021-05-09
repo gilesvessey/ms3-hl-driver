@@ -232,6 +232,23 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
   return state;
 }
 
+void daily_mode() {
+
+  // set the led strip colour
+  //
+  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
+    leds[led] = CRGB(255, 255, 255);
+  }
+
+  // set the halo colour to purplish blue
+  //
+  for (int led = 0; led < HALO_LEDS; led++) {
+    leds[led] = CRGB(80, 0, 255);
+  }  
+
+  FastLED.show();
+}
+
 struct rgb read_rgb(char data[], int first_digit) {
   // set the colour, 'c 255 0 255'
   //
