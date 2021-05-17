@@ -1,4 +1,3 @@
-#include <Regexp.h>
 #include <string.h>
 #include <AltSoftSerial.h>
 #include <FastLED.h>
@@ -8,17 +7,17 @@
 #define HALO_LEDS 32
 #define ALL_LEDS 91
 
-AltSoftSerial BTserial; 
+AltSoftSerial BTserial;
 CRGB leds[ALL_LEDS];
 boolean NL = true;
 char data[20];
 
 void setup() {
-  Serial.begin(9600);  
+  Serial.begin(9600);
   BTserial.begin(9600);
-  FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(leds, ALL_LEDS); 
+  FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(leds, ALL_LEDS);
   FastLED.addLeds<WS2812, PASS_PIN, GRB>(leds, ALL_LEDS);
-  Serial.println("ms3-hl-driver 1.0.0");  
+  Serial.println("ms3-hl-driver 1.0.0");
 }
 
 // make a class that represents an RGB colour value
@@ -26,7 +25,7 @@ void setup() {
 struct rgb {
   int r;
   int g;
-  int b;  
+  int b;
 };
 
 void solid_colour_mode(struct rgb strip, struct rgb halo) {
@@ -41,7 +40,7 @@ void solid_colour_mode(struct rgb strip, struct rgb halo) {
   //
   for (int led = 0; led < HALO_LEDS; led++) {
     leds[led] = CRGB(halo.r, halo.g, halo.b);
-  }  
+  }
 
   FastLED.show();
 }
@@ -92,22 +91,22 @@ struct ls liquid_fill_mode(struct rgb strip, struct rgb halo, double speed, stru
   //
   for (int led = 0; led < HALO_LEDS; led++) {
     leds[led] = CRGB(halo.r, halo.g, halo.b);
-  }  
+  }
 
   return state;
 }
 
 struct bs { int ball; bool rising; struct rgb curr; };
 struct bs bounce_mode(bool isRainbow, int frequency, struct rgb halo, struct bs state) {
-  if (isRainbow) 
+  if (isRainbow)
     for (int i = 0; i < frequency; i++) state.curr = rainbow(state.curr);
 
   // set the strip
   //
   for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
-    if (led == state.ball) 
+    if (led == state.ball)
       leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
-    else 
+    else
       leds[led] = CRGB(0, 0, 0);
   }
 
@@ -116,20 +115,20 @@ struct bs bounce_mode(bool isRainbow, int frequency, struct rgb halo, struct bs 
   for (int led = 0; led < HALO_LEDS; led++) {
     leds[led] = CRGB(halo.r, halo.g, halo.b);
   }
-  
+
   FastLED.show();
 
   // do bouncy ball things
   //
-  if (state.ball == HALO_LEDS) 
-    state.rising = true; 
-  else if (state.ball == ALL_LEDS) 
-    state.rising = false; 
+  if (state.ball == HALO_LEDS)
+    state.rising = true;
+  else if (state.ball == ALL_LEDS)
+    state.rising = false;
 
-  if (state.rising) 
-    state.ball++; 
-  else 
-    state.ball--; 
+  if (state.rising)
+    state.ball++;
+  else
+    state.ball--;
 
   return state;
 }
@@ -138,19 +137,19 @@ struct rgb pulse(struct rgb colour, int frequency, struct rgb curr, bool brighte
   // frequency of 8 is 8/255ths change each tick
   //
   if (brightening) {
-    curr.r = curr.r + frequency; 
+    curr.r = curr.r + frequency;
     if (curr.r > colour.r) curr.r = colour.r;
-    curr.g = curr.g + frequency; 
-    if (curr.g > colour.g) curr.g = colour.g;    
-    curr.b = curr.b + frequency; 
-    if (curr.b > colour.b) curr.b = colour.b;      
+    curr.g = curr.g + frequency;
+    if (curr.g > colour.g) curr.g = colour.g;
+    curr.b = curr.b + frequency;
+    if (curr.b > colour.b) curr.b = colour.b;
   } else {
-    curr.r = curr.r - frequency; 
+    curr.r = curr.r - frequency;
     if (curr.r < 0) curr.r = 0;
-    curr.g = curr.g - frequency; 
-    if (curr.g < 0) curr.g = 0;    
-    curr.b = curr.b - frequency; 
-    if (curr.b < 0) curr.b = 0;  
+    curr.g = curr.g - frequency;
+    if (curr.g < 0) curr.g = 0;
+    curr.b = curr.b - frequency;
+    if (curr.b < 0) curr.b = 0;
   }
   return curr;
 }
@@ -162,22 +161,22 @@ struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
   for (int led = 0; led < ALL_LEDS; led++) {
     if (curr.r == 0 && curr.g == 0 && curr.b == 0) {
       brightening = true;
-      curr = pulse(colour, frequency, curr, brightening);           
+      curr = pulse(colour, frequency, curr, brightening);
     } else if (curr.r == colour.r && curr.g == colour.g && curr.b == colour.b) {
       brightening = false;
     }
 
     leds[led] = CRGB(curr.r, curr.g, curr.b);
-    curr = pulse(colour, frequency, curr, brightening); 
+    curr = pulse(colour, frequency, curr, brightening);
   }
 
   // progress in the sequence one more time so we shift on the next tick
   //
-  state.curr = pulse(colour, frequency, state.curr, state.brightening); 
-  if (state.curr.r == colour.r && state.curr.g == colour.g && state.curr.b == colour.b) 
+  state.curr = pulse(colour, frequency, state.curr, state.brightening);
+  if (state.curr.r == colour.r && state.curr.g == colour.g && state.curr.b == colour.b)
     state.brightening = false;
-  else if (state.curr.r == 0 && state.curr.g == 0 && state.curr.b == 0) 
-    state.brightening = true;  
+  else if (state.curr.r == 0 && state.curr.g == 0 && state.curr.b == 0)
+    state.brightening = true;
 
   FastLED.show();
 
@@ -213,9 +212,9 @@ struct rgb rainbow(struct rgb value) {
     struct rgb start = { 255, 0, 0 };
     return start;
   }
-} 
+}
 
-struct rgb rainbow_mode(double speed, int frequency, struct rgb state) { 
+struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
   struct rgb colour = state;
 
   for (int led = 0; led < ALL_LEDS; led++) {
@@ -226,9 +225,9 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
     for (int i = 0; i < frequency; i++) { colour = rainbow(colour); }
   }
   FastLED.show();
-    
+
   for (int i = 0; i < 8; i++) { state = rainbow(state); }
-  
+
   return state;
 }
 
@@ -244,7 +243,7 @@ void daily_mode() {
   //
   for (int led = 0; led < HALO_LEDS; led++) {
     leds[led] = CRGB(80, 0, 255);
-  }  
+  }
 
   FastLED.show();
 }
@@ -254,9 +253,9 @@ struct rgb read_rgb(char data[], int first_digit) {
   //
   struct rgb colour = { 256, 256, 256 };
   // clear the buffer for the next colour change
-  //    
+  //
   char buff[4];
-  memset(buff, 0, 4);        
+  memset(buff, 0, 4);
   // convoluted way of reading three integers delimited by spaces
   //
   for (int i = first_digit; i < strlen(data); i++) {
@@ -264,18 +263,18 @@ struct rgb read_rgb(char data[], int first_digit) {
       buff[strlen(buff)] = '\0';
       if (colour.r == 256) colour.r = atoi(buff);
       else if (colour.g == 256) colour.g = atoi(buff);
-      else if (colour.b == 256) colour.b = atoi(buff);          
+      else if (colour.b == 256) colour.b = atoi(buff);
       // clear the buffer for the next number
       //
-      memset(buff, 0, 4);  
+      memset(buff, 0, 4);
       // skip over the space
       //
-      i++;                          
+      i++;
     }
-    buff[strlen(buff)] = data[i]; 
+    buff[strlen(buff)] = data[i];
   }
 
-  if (colour.r != 256 && colour.g != 256 && colour.b != 256) {  
+  if (colour.r != 256 && colour.g != 256 && colour.b != 256) {
     // all values set
     //
     return colour;
@@ -289,9 +288,9 @@ struct rgb read_rgb(char data[], int first_digit) {
 
 // DEFAULTS
 //
-int mode = 7; 
-struct rgb colour_strip = { 255, 0, 255 };
-struct rgb colour_halo = { 255, 0, 255 };
+int mode = 0;
+struct rgb colour_strip = { 40, 40, 255 };
+struct rgb colour_halo = { 255, 40, 255 };
 
 // state for each mode that requires it
 //
@@ -340,7 +339,7 @@ void loop() {
           colour_halo = colour_strip;
           break;
       }
-    }  
+    }
   }
 
   switch (mode) {
@@ -359,7 +358,7 @@ void loop() {
     case 3:
       // mode 3 - bouncing back and forth
       bounce_state = bounce_mode(true, 8, colour_halo, bounce_state);
-      break;    
+      break;
     case 4:
       // mode 4 - dual colour snake
       break;
@@ -368,11 +367,11 @@ void loop() {
       break;
     case 6:
       // mode 6 - single colour strobe
-      break;      
+      break;
     case 7:
       // mode 7 - rainbow, baby
       rainbow_state = rainbow_mode(0.5, 8, rainbow_state);
-      break;      
+      break;
   }
   // wait before we do it again
   //
