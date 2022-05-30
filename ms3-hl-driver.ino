@@ -241,18 +241,42 @@ int loop_de_loop(boolean isPassSide, int pos) {
   // 0 - 32 halo
   // 33 - 91 strip
 
-  // 33 - 62, 0 - 32, 63 - 91
-  if (isPassSide && pos > 0 && pos <= 32) {
+  // 33 - 55, 0 - 32, 56 - 91
+  if (isPassSide && pos > 0 && pos <= 32) { // reverse the halo for the pass side
     pos--;
   } else {
     pos++;
   }
 
-  if (pos == 62) {
-    pos = 32;
+  if (pos > 0 && pos <= 32) {
+    // 0 - 32
+    // we want to light up the first led, it's led 5
+    // we want to light up the last led, it's led 4
+    // when we hit 32 we go back to 0
+    // instead of the conditions being on 32, the condition is on 4
+
+    // if we're currently in the halo, allow for an offset
   }
-  if (pos == 0) {
-    pos = 63;
+
+  int offset = 5;
+  int halo_start = 5;
+  int halo_end = 4;
+  // we need to add some conditions that automatically handle the fuckedness that is
+  // offsetting the ring
+
+
+  if (pos == 55) {
+    if (isPassSide) {
+      pos = 32;
+    } else {
+      pos = 0;
+    }
+  }
+  if (pos == 0 && isPassSide) {
+    pos = 56;
+  }
+  if (pos == 32 && !isPassSide) {
+    pos = 56;
   }
   if (pos == 91) {
     pos = 33;
@@ -260,22 +284,35 @@ int loop_de_loop(boolean isPassSide, int pos) {
   return pos;
 }
 
-struct ss { int ball; struct rgb curr; };
+struct ss { int driverBall; int passBall; struct rgb curr; };
 struct ss start_mode(struct ss state) {
   for (int led = 0; led < ALL_LEDS; led++) {
 
-    if (led == state.ball || led == state.ball - 1 || led == state.ball + 1) { // if this is the location of the ball, light it up
+    if (led == state.passBall || led == state.passBall - 1 || led == state.passBall + 1) { // if this is the location of the ball, light it up
       pass_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
     } else {
       pass_leds[led] = CRGB(0, 0, 0);
     }
+
+    if (led == state.driverBall || led == state.driverBall - 1 || led == state.driverBall + 1) { // if this is the location of the ball, light it up
+      driver_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
+    } else {
+      driver_leds[led] = CRGB(0, 0, 0);
+    }
   }
 
   FastLED.show();
-  if (state.ball == ALL_LEDS) {
-    state.ball = 0;
+  if (state.driverBall == ALL_LEDS) {
+    state.driverBall = 0;
   } else {
-    state.ball = loop_de_loop(true, state.ball);
+    state.driverBall = loop_de_loop(false, state.driverBall);
+    // state.ball++;
+  }
+
+  if (state.passBall == ALL_LEDS) {
+    state.passBall = 0;
+  } else {
+    state.passBall = loop_de_loop(true, state.passBall);
     // state.ball++;
   }
   return state;
@@ -334,7 +371,7 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { false, { 255, 0, 0 } };
-struct ss start_state = { 0, { 255, 0, 0 } };
+struct ss start_state = { 0, 32, { 255, 0, 255 } };
 
 void loop() {
   // we need to be able to accept a command that sets colour
