@@ -8,7 +8,6 @@
 #define ALL_LEDS 91
 
 AltSoftSerial BTserial;
-CRGB leds[ALL_LEDS];
 CRGB pass_leds[ALL_LEDS];
 CRGB driver_leds[ALL_LEDS];
 boolean NL = true;
@@ -17,8 +16,6 @@ char data[20];
 void setup() {
   Serial.begin(9600);
   BTserial.begin(9600);
-  FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(leds, ALL_LEDS);
-  FastLED.addLeds<WS2812, PASS_PIN, GRB>(leds, ALL_LEDS);
 
   FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(driver_leds, ALL_LEDS);
   FastLED.addLeds<WS2812, PASS_PIN, GRB>(pass_leds, ALL_LEDS);
@@ -39,13 +36,16 @@ void solid_colour_mode(struct rgb strip, struct rgb halo) {
   // set the led strip colour
   //
   for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
-    leds[led] = CRGB(strip.r, strip.g, strip.b);
+    pass_leds[led] = CRGB(strip.r, strip.g, strip.b);
+    driver_leds[led] = CRGB(strip.r, strip.g, strip.b);
+
   }
 
   // set the halo colour
   //
   for (int led = 0; led < HALO_LEDS; led++) {
-    leds[led] = CRGB(halo.r, halo.g, halo.b);
+    pass_leds[led] = CRGB(halo.r, halo.g, halo.b);
+    driver_leds[led] = CRGB(strip.r, strip.g, strip.b);
   }
 
   FastLED.show();
@@ -61,17 +61,22 @@ struct ls liquid_fill_mode(struct rgb strip, struct rgb halo, double speed, stru
 
       // render the pool at one end
       //
-      leds[led] = CRGB(strip.r, strip.g, strip.b);
+      pass_leds[led] = CRGB(strip.r, strip.g, strip.b);
+      driver_leds[led] = CRGB(strip.r, strip.g, strip.b);
+
     } else if (led == state.drip) {
 
       // fill in the drip
       //
-      leds[led] = CRGB(strip.r, strip.g, strip.b);
+      pass_leds[led] = CRGB(strip.r, strip.g, strip.b);
+      driver_leds[led] = CRGB(strip.r, strip.g, strip.b);
+
     } else {
 
       // otherwise a blank pixel
       //
-      leds[led] = CRGB(0, 0, 0);
+      pass_leds[led] = CRGB(0, 0, 0);
+      driver_leds[led] = CRGB(0, 0, 0);
     }
   }
   FastLED.show();
@@ -96,7 +101,8 @@ struct ls liquid_fill_mode(struct rgb strip, struct rgb halo, double speed, stru
   // set the halo colour
   //
   for (int led = 0; led < HALO_LEDS; led++) {
-    leds[led] = CRGB(halo.r, halo.g, halo.b);
+    pass_leds[led] = CRGB(halo.r, halo.g, halo.b);
+    driver_leds[led] = CRGB(halo.r, halo.g, halo.b);
   }
 
   return state;
@@ -110,16 +116,21 @@ struct bs bounce_mode(bool isRainbow, int frequency, struct rgb halo, struct bs 
   // set the strip
   //
   for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
-    if (led == state.ball)
-      leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
-    else
-      leds[led] = CRGB(0, 0, 0);
+    if (led == state.ball) {
+      driver_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
+      pass_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
+    }
+    else {
+      driver_leds[led] = CRGB(0, 0, 0);
+      pass_leds[led] = CRGB(0, 0, 0);
+    }
   }
 
   // set the halo
   //
   for (int led = 0; led < HALO_LEDS; led++) {
-    leds[led] = CRGB(halo.r, halo.g, halo.b);
+    driver_leds[led] = CRGB(halo.r, halo.g, halo.b);
+    pass_leds[led] = CRGB(halo.r, halo.g, halo.b);
   }
 
   FastLED.show();
@@ -172,7 +183,9 @@ struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
       brightening = false;
     }
 
-    leds[led] = CRGB(curr.r, curr.g, curr.b);
+    driver_leds[led] = CRGB(curr.r, curr.g, curr.b);
+    pass_leds[led] = CRGB(curr.r, curr.g, curr.b);
+
     curr = pulse(colour, frequency, curr, brightening);
   }
 
@@ -224,7 +237,9 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
   struct rgb colour = state;
 
   for (int led = 0; led < ALL_LEDS; led++) {
-    leds[led] = CRGB(colour.r, colour.g, colour.b);
+    pass_leds[led] = CRGB(colour.r, colour.g, colour.b);
+    driver_leds[led] = CRGB(colour.r, colour.g, colour.b);
+
 
     // this is how tightly packed the rainbow will be
     //
@@ -327,7 +342,7 @@ struct ss start_mode(struct ss state) {
   }
   // ready to rip boys
   //
-  if ((state.driverBall == 0 || state.passBall == 0) && state.isFinale) {
+  if (state.isFinale && (state.driverBall == 0 || state.passBall == 0)) {
     state.done = true;
   }
 
@@ -387,7 +402,7 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { false, { 255, 0, 0 } };
-struct ss start_state = { 0, 32, { 255, 0, 255 }, false, false };
+struct ss start_state = { 0, 32, { 255, 50, 0 }, false, false };
 
 void loop() {
   // we need to be able to accept a command that sets colour
@@ -464,13 +479,17 @@ void loop() {
       break;
     case 8:
       // mode 8 - startup sequence
-      // if (start_state.done) {
-      //   mode = 0
-      // }
+      if (start_state.done == true) // allow it to be run more than once
+        start_state = { 0, 32, { 255, 50, 0 }, false, false };
+
       start_state = start_mode(start_state);
+
+      if (start_state.done == true) // sequence is over, daily driving time
+        mode = 0;
+
       break;
   }
   // wait before we do it again
   //
-  delay(10);
+  delay(15);
 }
