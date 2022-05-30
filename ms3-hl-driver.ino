@@ -238,32 +238,11 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
 }
 
 int loop_de_loop(boolean isPassSide, int pos) {
-  // 0 - 32 halo
-  // 33 - 91 strip
-
-  // 33 - 55, 0 - 32, 56 - 91
   if (isPassSide && pos > 0 && pos <= 32) { // reverse the halo for the pass side
     pos--;
   } else {
     pos++;
   }
-
-  if (pos > 0 && pos <= 32) {
-    // 0 - 32
-    // we want to light up the first led, it's led 5
-    // we want to light up the last led, it's led 4
-    // when we hit 32 we go back to 0
-    // instead of the conditions being on 32, the condition is on 4
-
-    // if we're currently in the halo, allow for an offset
-  }
-
-  int offset = 5;
-  int halo_start = 5;
-  int halo_end = 4;
-  // we need to add some conditions that automatically handle the fuckedness that is
-  // offsetting the ring
-
 
   if (pos == 55) {
     if (isPassSide) {
@@ -281,6 +260,7 @@ int loop_de_loop(boolean isPassSide, int pos) {
   if (pos == 91) {
     pos = 33;
   }
+
   return pos;
 }
 
@@ -294,10 +274,26 @@ struct ss start_mode(struct ss state) {
       pass_leds[led] = CRGB(0, 0, 0);
     }
 
+    // munge the led position for the driver's side halo
+    //
+    int offset = 5;
+    int driver_offset_led = led;
+    int driver_offset = 5;
+    if (led < 32) {
+      for (int i = 0; i < offset; i++) {
+
+        if (driver_offset_led == 0) {
+          driver_offset_led = 32;
+        } else {
+          driver_offset_led--;
+        }
+      }
+    }
+
     if (led == state.driverBall || led == state.driverBall - 1 || led == state.driverBall + 1) { // if this is the location of the ball, light it up
-      driver_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
+      driver_leds[driver_offset_led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
     } else {
-      driver_leds[led] = CRGB(0, 0, 0);
+      driver_leds[driver_offset_led] = CRGB(0, 0, 0);
     }
   }
 
@@ -453,5 +449,5 @@ void loop() {
   }
   // wait before we do it again
   //
-  delay(25);
+  delay(10);
 }
