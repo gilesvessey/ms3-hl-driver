@@ -264,53 +264,73 @@ int loop_de_loop(boolean isPassSide, int pos) {
   return pos;
 }
 
-struct ss { int driverBall; int passBall; struct rgb curr; };
+struct ss { int driverBall; int passBall; struct rgb curr; boolean isFinale; boolean done; };
 struct ss start_mode(struct ss state) {
+  int offset = 5;
   for (int led = 0; led < ALL_LEDS; led++) {
 
-    if (led == state.passBall || led == state.passBall - 1 || led == state.passBall + 1) { // if this is the location of the ball, light it up
-      pass_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
-    } else {
-      pass_leds[led] = CRGB(0, 0, 0);
-    }
-
-    // munge the led position for the driver's side halo
+    // munge the led position for the passenger's side halo
     //
     int offset = 5;
+    int pass_offset_led = led;
     int driver_offset_led = led;
-    int driver_offset = 5;
     if (led < 32) {
       for (int i = 0; i < offset; i++) {
+        if (pass_offset_led == 31) {
+          pass_offset_led = 0;
+        } else {
+          pass_offset_led++;
+        }
 
         if (driver_offset_led == 0) {
-          driver_offset_led = 32;
+          driver_offset_led = 31;
         } else {
           driver_offset_led--;
         }
       }
     }
 
+    if (led == state.passBall || led == state.passBall - 1 || led == state.passBall + 1) { // if this is the location of the ball, light it up
+      pass_leds[pass_offset_led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
+    } else {
+      if (!state.isFinale) {
+        pass_leds[pass_offset_led] = CRGB(0, 0, 0);
+      }
+    }
+
     if (led == state.driverBall || led == state.driverBall - 1 || led == state.driverBall + 1) { // if this is the location of the ball, light it up
       driver_leds[driver_offset_led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
     } else {
-      driver_leds[driver_offset_led] = CRGB(0, 0, 0);
+      if (!state.isFinale) {
+        driver_leds[driver_offset_led] = CRGB(0, 0, 0);
+      }
     }
   }
 
   FastLED.show();
-  if (state.driverBall == ALL_LEDS) {
-    state.driverBall = 0;
+
+  if (state.isFinale) {
+    state.driverBall--;
   } else {
     state.driverBall = loop_de_loop(false, state.driverBall);
-    // state.ball++;
   }
 
-  if (state.passBall == ALL_LEDS) {
-    state.passBall = 0;
+  if (state.isFinale) {
+    state.passBall--;
   } else {
     state.passBall = loop_de_loop(true, state.passBall);
-    // state.ball++;
   }
+  // we ready for the finale?
+  //
+  if (state.driverBall == 90 || state.passBall == 90) {
+    state.isFinale = true;
+  }
+  // ready to rip boys
+  //
+  if ((state.driverBall == 0 || state.passBall == 0) && state.isFinale) {
+    state.done = true;
+  }
+
   return state;
 }
 
@@ -367,7 +387,7 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { false, { 255, 0, 0 } };
-struct ss start_state = { 0, 32, { 255, 0, 255 } };
+struct ss start_state = { 0, 32, { 255, 0, 255 }, false, false };
 
 void loop() {
   // we need to be able to accept a command that sets colour
@@ -444,6 +464,9 @@ void loop() {
       break;
     case 8:
       // mode 8 - startup sequence
+      // if (start_state.done) {
+      //   mode = 0
+      // }
       start_state = start_mode(start_state);
       break;
   }
