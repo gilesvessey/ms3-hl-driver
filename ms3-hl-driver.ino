@@ -1,14 +1,16 @@
 #include <string.h>
 #include <AltSoftSerial.h>
 #include <FastLED.h>
-#define DRIVER_PIN 4
-#define PASS_PIN 5
+#define DRIVER_PIN 5
+#define PASS_PIN 4
 #define STRIP_LEDS 59
 #define HALO_LEDS 32
 #define ALL_LEDS 91
 
 AltSoftSerial BTserial;
 CRGB leds[ALL_LEDS];
+CRGB pass_leds[ALL_LEDS];
+CRGB driver_leds[ALL_LEDS];
 boolean NL = true;
 char data[20];
 
@@ -17,6 +19,10 @@ void setup() {
   BTserial.begin(9600);
   FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(leds, ALL_LEDS);
   FastLED.addLeds<WS2812, PASS_PIN, GRB>(leds, ALL_LEDS);
+
+  FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(driver_leds, ALL_LEDS);
+  FastLED.addLeds<WS2812, PASS_PIN, GRB>(pass_leds, ALL_LEDS);
+
   Serial.println("ms3-hl-driver 1.0.0");
 }
 
@@ -231,21 +237,48 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
   return state;
 }
 
-void daily_mode() {
+int loop_de_loop(boolean isPassSide, int pos) {
+  // 0 - 32 halo
+  // 33 - 91 strip
 
-  // set the led strip colour
-  //
-  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
-    leds[led] = CRGB(255, 255, 255);
+  // 33 - 62, 0 - 32, 63 - 91
+  if (isPassSide && pos > 0 && pos <= 32) {
+    pos--;
+  } else {
+    pos++;
   }
 
-  // set the halo colour to purplish blue
-  //
-  for (int led = 0; led < HALO_LEDS; led++) {
-    leds[led] = CRGB(80, 0, 255);
+  if (pos == 62) {
+    pos = 32;
+  }
+  if (pos == 0) {
+    pos = 63;
+  }
+  if (pos == 91) {
+    pos = 33;
+  }
+  return pos;
+}
+
+struct ss { int ball; struct rgb curr; };
+struct ss start_mode(struct ss state) {
+  for (int led = 0; led < ALL_LEDS; led++) {
+
+    if (led == state.ball || led == state.ball - 1 || led == state.ball + 1) { // if this is the location of the ball, light it up
+      pass_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
+    } else {
+      pass_leds[led] = CRGB(0, 0, 0);
+    }
   }
 
   FastLED.show();
+  if (state.ball == ALL_LEDS) {
+    state.ball = 0;
+  } else {
+    state.ball = loop_de_loop(true, state.ball);
+    // state.ball++;
+  }
+  return state;
 }
 
 struct rgb read_rgb(char data[], int first_digit) {
@@ -288,9 +321,12 @@ struct rgb read_rgb(char data[], int first_digit) {
 
 // DEFAULTS
 //
-int mode = 0;
-struct rgb colour_strip = { 40, 40, 255 };
-struct rgb colour_halo = { 255, 40, 255 };
+int mode = 8;
+struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
+struct rgb colour_halo = { 255, 50, 0 }; // daily driving orange
+
+
+// struct rgb colour_strip = { 0, 255, 0 };
 
 // state for each mode that requires it
 //
@@ -298,6 +334,7 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { false, { 255, 0, 0 } };
+struct ss start_state = { 0, { 255, 0, 0 } };
 
 void loop() {
   // we need to be able to accept a command that sets colour
@@ -363,7 +400,7 @@ void loop() {
       // mode 4 - dual colour snake
       break;
     case 5:
-      // mode 5 - block breaking animation - tech challenge
+      // mode 5 -
       break;
     case 6:
       // mode 6 - single colour strobe
@@ -371,6 +408,10 @@ void loop() {
     case 7:
       // mode 7 - rainbow, baby
       rainbow_state = rainbow_mode(0.5, 8, rainbow_state);
+      break;
+    case 8:
+      // mode 8 - startup sequence
+      start_state = start_mode(start_state);
       break;
   }
   // wait before we do it again
