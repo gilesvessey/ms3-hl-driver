@@ -253,7 +253,7 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
 }
 
 int loop_de_loop(boolean isPassSide, int pos) {
-  if (isPassSide && pos > 0 && pos <= 32)  // reverse the halo for the pass side
+  if (isPassSide && pos > 0 && pos <= 31)  // reverse the halo for the pass side
     pos--;
   else
     pos++;
@@ -262,18 +262,18 @@ int loop_de_loop(boolean isPassSide, int pos) {
   //
   if (pos == 55) {
     if (isPassSide)
-      pos = 32;
+      pos = 31;
      else
       pos = 0;
   }
 
   // end of the loopdeloop
   //
-  if ((pos == 0 && isPassSide) || (pos == 32 && !isPassSide))
+  if ((pos == 0 && isPassSide) || (pos == 31 && !isPassSide))
     pos = 56;
 
   if (pos == 91)
-    pos = 33;
+    pos = 32;
 
   return pos;
 }
@@ -282,13 +282,12 @@ struct ss { int driverBall; int passBall; struct rgb curr; boolean isFinale; boo
 struct ss start_mode(struct ss state) {
   int offset = 5;
   for (int led = 0; led < ALL_LEDS; led++) {
-
     // munge the led position for the halos
     //
     int offset = 5;
     int pass_offset_led = led;
     int driver_offset_led = led;
-    if (led < 32) {
+    if (led <= 31) {
       for (int i = 0; i < offset; i++) {
         if (pass_offset_led == 31)
           pass_offset_led = 0;
@@ -388,7 +387,7 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { false, { 255, 0, 0 } };
-struct ss start_state = { 33, 33, { 255, 69, 0 }, false, false };
+struct ss start_state = { 32, 32, { 255, 69, 0 }, false, false };
 
 void loop() {
   // we need to be able to accept a command that sets colour
