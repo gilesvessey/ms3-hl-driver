@@ -258,22 +258,42 @@ int loop_de_loop(boolean isPassSide, int pos) {
   else
     pos++;
 
-  // start of the loopdeloop
+  // entering into the loop
   //
   if (pos == 55) {
     if (isPassSide)
       pos = 31;
-     else
+    else
       pos = 0;
   }
 
-  // end of the loopdeloop
+  // exiting the loop
   //
   if ((pos == 0 && isPassSide) || (pos == 31 && !isPassSide))
     pos = 56;
 
-  if (pos == 91)
-    pos = 32;
+  return pos;
+}
+
+int loop_de_loop_reverse(boolean isPassSide, int pos) {
+  if (isPassSide && pos > 0 && pos <= 31)  // reverse the halo for the pass side
+    pos++;
+  else
+    pos--;
+
+  // entering into the loop
+  //
+  if (pos == 56) {
+    if (isPassSide)
+      pos = 0;
+     else
+      pos = 31;
+  }
+
+  // exiting the loop
+  //
+  if ((pos == 31 && isPassSide) || (pos == 0 && !isPassSide))
+    pos = 55;
 
   return pos;
 }
@@ -304,7 +324,7 @@ struct ss start_mode(struct ss state) {
     if (led == state.passBall || led == state.passBall - 1 || led == state.passBall + 1)  // if this is the location of the ball, light it up
       pass_leds[pass_offset_led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
     else if (!state.isFinale)
-    pass_leds[pass_offset_led] = CRGB(0, 0, 0);
+      pass_leds[pass_offset_led] = CRGB(0, 0, 0);
 
     if (led == state.driverBall || led == state.driverBall - 1 || led == state.driverBall + 1)  // if this is the location of the ball, light it up
       driver_leds[driver_offset_led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
@@ -320,12 +340,12 @@ struct ss start_mode(struct ss state) {
     state.passBall = loop_de_loop(true, state.passBall);
   }
 
-  // we ready for the finale?
+  // finished the loopdeloop, begin filling everything in
   //
   if (state.driverBall == 90 || state.passBall == 90)
     state.isFinale = true;
 
-  // ready to rip boys
+  // start sequence complete
   //
   if (state.isFinale && (state.driverBall == 0 || state.passBall == 0))
     state.done = true;
