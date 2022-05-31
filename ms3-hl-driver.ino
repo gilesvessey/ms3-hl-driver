@@ -290,38 +290,28 @@ struct ss start_mode(struct ss state) {
     int driver_offset_led = led;
     if (led < 32) {
       for (int i = 0; i < offset; i++) {
-        if (pass_offset_led == 31) {
+        if (pass_offset_led == 31)
           pass_offset_led = 0;
-        } else {
+        else
           pass_offset_led++;
-        }
 
-        if (driver_offset_led == 0) {
+        if (driver_offset_led == 0)
           driver_offset_led = 31;
-        } else {
+        else
           driver_offset_led--;
-        }
       }
     }
 
-    if (led == state.passBall || led == state.passBall - 1 || led == state.passBall + 1) { // if this is the location of the ball, light it up
+    if (led == state.passBall || led == state.passBall - 1 || led == state.passBall + 1)  // if this is the location of the ball, light it up
       pass_leds[pass_offset_led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
-    } else {
-      if (!state.isFinale) {
-        pass_leds[pass_offset_led] = CRGB(0, 0, 0);
-      }
-    }
+    else if (!state.isFinale)
+    pass_leds[pass_offset_led] = CRGB(0, 0, 0);
 
-    if (led == state.driverBall || led == state.driverBall - 1 || led == state.driverBall + 1) { // if this is the location of the ball, light it up
+    if (led == state.driverBall || led == state.driverBall - 1 || led == state.driverBall + 1)  // if this is the location of the ball, light it up
       driver_leds[driver_offset_led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
-    } else {
-      if (!state.isFinale) {
-        driver_leds[driver_offset_led] = CRGB(0, 0, 0);
-      }
-    }
+    else if (!state.isFinale)
+      driver_leds[driver_offset_led] = CRGB(0, 0, 0);
   }
-
-  FastLED.show();
 
   if (state.isFinale) {
     state.driverBall--;
@@ -333,15 +323,15 @@ struct ss start_mode(struct ss state) {
 
   // we ready for the finale?
   //
-  if (state.driverBall == 90 || state.passBall == 90) {
+  if (state.driverBall == 90 || state.passBall == 90)
     state.isFinale = true;
-  }
+
   // ready to rip boys
   //
-  if (state.isFinale && (state.driverBall == 0 || state.passBall == 0)) {
+  if (state.isFinale && (state.driverBall == 0 || state.passBall == 0))
     state.done = true;
-  }
 
+  FastLED.show();
   return state;
 }
 
