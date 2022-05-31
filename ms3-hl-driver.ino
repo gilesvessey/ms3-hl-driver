@@ -253,28 +253,27 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
 }
 
 int loop_de_loop(boolean isPassSide, int pos) {
-  if (isPassSide && pos > 0 && pos <= 32) { // reverse the halo for the pass side
+  if (isPassSide && pos > 0 && pos <= 32)  // reverse the halo for the pass side
     pos--;
-  } else {
+  else
     pos++;
+
+  // start of the loopdeloop
+  //
+  if (pos == 55) {
+    if (isPassSide)
+      pos = 32;
+     else
+      pos = 0;
   }
 
-  if (pos == 55) {
-    if (isPassSide) {
-      pos = 32;
-    } else {
-      pos = 0;
-    }
-  }
-  if (pos == 0 && isPassSide) {
+  // end of the loopdeloop
+  //
+  if ((pos == 0 && isPassSide) || (pos == 32 && !isPassSide))
     pos = 56;
-  }
-  if (pos == 32 && !isPassSide) {
-    pos = 56;
-  }
-  if (pos == 91) {
+
+  if (pos == 91)
     pos = 33;
-  }
 
   return pos;
 }
@@ -284,7 +283,7 @@ struct ss start_mode(struct ss state) {
   int offset = 5;
   for (int led = 0; led < ALL_LEDS; led++) {
 
-    // munge the led position for the passenger's side halo
+    // munge the led position for the halos
     //
     int offset = 5;
     int pass_offset_led = led;
@@ -326,15 +325,12 @@ struct ss start_mode(struct ss state) {
 
   if (state.isFinale) {
     state.driverBall--;
-  } else {
-    state.driverBall = loop_de_loop(false, state.driverBall);
-  }
-
-  if (state.isFinale) {
     state.passBall--;
   } else {
+    state.driverBall = loop_de_loop(false, state.driverBall);
     state.passBall = loop_de_loop(true, state.passBall);
   }
+
   // we ready for the finale?
   //
   if (state.driverBall == 90 || state.passBall == 90) {
@@ -391,7 +387,7 @@ struct rgb read_rgb(char data[], int first_digit) {
 //
 int mode = 8;
 struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
-struct rgb colour_halo = { 255, 50, 0 }; // daily driving orange
+struct rgb colour_halo = { 255, 69, 0 }; // daily driving orange
 
 
 // struct rgb colour_strip = { 0, 255, 0 };
@@ -402,7 +398,7 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ps pulse_state = { false, { 255, 0, 0 } };
-struct ss start_state = { 0, 32, { 255, 50, 0 }, false, false };
+struct ss start_state = { 33, 33, { 255, 69, 0 }, false, false };
 
 void loop() {
   // we need to be able to accept a command that sets colour
@@ -480,7 +476,9 @@ void loop() {
     case 8:
       // mode 8 - startup sequence
       if (start_state.done == true) // allow it to be run more than once
-        start_state = { 0, 32, { 255, 50, 0 }, false, false };
+        // start_state = { 0, 32, { 255, 50, 0 }, false, false };
+        start_state = { 33, 33, { 255, 50, 0 }, false, false };
+
 
       start_state = start_mode(start_state);
 
