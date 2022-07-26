@@ -3,13 +3,18 @@
 #include <FastLED.h>
 #define DRIVER_PIN 5
 #define PASS_PIN 4
+#define GLOW_PIN 6
+
 #define STRIP_LEDS 59
 #define HALO_LEDS 32
 #define ALL_LEDS 91
+#define GLOW_LEDS 205
 
 AltSoftSerial BTserial;
 CRGB pass_leds[ALL_LEDS];
 CRGB driver_leds[ALL_LEDS];
+CRGB glow_leds[GLOW_LEDS];
+
 boolean NL = true;
 char data[20];
 
@@ -19,6 +24,7 @@ void setup() {
 
   FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(driver_leds, ALL_LEDS);
   FastLED.addLeds<WS2812, PASS_PIN, GRB>(pass_leds, ALL_LEDS);
+  FastLED.addLeds<WS2812, GLOW_PIN, GRB>(glow_leds, GLOW_LEDS);
 
   Serial.println("ms3-hl-driver 1.0.0");
 }
@@ -33,12 +39,11 @@ struct rgb {
 
 void solid_colour_mode(struct rgb strip, struct rgb halo) {
 
-  // set the led strip colour
-  //
+  set the led strip colour
+
   for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
     pass_leds[led] = CRGB(strip.r, strip.g, strip.b);
     driver_leds[led] = CRGB(strip.r, strip.g, strip.b);
-
   }
 
   // set the halo colour
@@ -150,58 +155,6 @@ struct bs bounce_mode(bool isRainbow, int frequency, struct rgb halo, struct bs 
   return state;
 }
 
-struct rgb pulse(struct rgb colour, int frequency, struct rgb curr, bool brightening) {
-  // frequency of 8 is 8/255ths change each tick
-  //
-  if (brightening) {
-    curr.r = curr.r + frequency;
-    if (curr.r > colour.r) curr.r = colour.r;
-    curr.g = curr.g + frequency;
-    if (curr.g > colour.g) curr.g = colour.g;
-    curr.b = curr.b + frequency;
-    if (curr.b > colour.b) curr.b = colour.b;
-  } else {
-    curr.r = curr.r - frequency;
-    if (curr.r < 0) curr.r = 0;
-    curr.g = curr.g - frequency;
-    if (curr.g < 0) curr.g = 0;
-    curr.b = curr.b - frequency;
-    if (curr.b < 0) curr.b = 0;
-  }
-  return curr;
-}
-
-struct ps { bool brightening; struct rgb curr; };
-struct ps pulse_mode(struct rgb colour, int frequency, struct ps state) {
-  struct rgb curr = state.curr;
-  bool brightening = state.brightening;
-  for (int led = 0; led < ALL_LEDS; led++) {
-    if (curr.r == 0 && curr.g == 0 && curr.b == 0) {
-      brightening = true;
-      curr = pulse(colour, frequency, curr, brightening);
-    } else if (curr.r == colour.r && curr.g == colour.g && curr.b == colour.b) {
-      brightening = false;
-    }
-
-    driver_leds[led] = CRGB(curr.r, curr.g, curr.b);
-    pass_leds[led] = CRGB(curr.r, curr.g, curr.b);
-
-    curr = pulse(colour, frequency, curr, brightening);
-  }
-
-  // progress in the sequence one more time so we shift on the next tick
-  //
-  state.curr = pulse(colour, frequency, state.curr, state.brightening);
-  if (state.curr.r == colour.r && state.curr.g == colour.g && state.curr.b == colour.b)
-    state.brightening = false;
-  else if (state.curr.r == 0 && state.curr.g == 0 && state.curr.b == 0)
-    state.brightening = true;
-
-  FastLED.show();
-
-  return state;
-}
-
 struct rgb rainbow(struct rgb value) {
 
   // return the next rgb value in the rainbow
@@ -245,6 +198,17 @@ struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
     //
     for (int i = 0; i < frequency; i++) { colour = rainbow(colour); }
   }
+
+    for (int led = 0; led < GLOW_LEDS; led++) {
+      glow_leds[led] = CRGB(colour.r, colour.g, colour.b);
+
+
+    // this is how tightly packed the rainbow will be
+    //
+    for (int i = 0; i < frequency; i++) { colour = rainbow(colour); }
+  }
+
+
   FastLED.show();
 
   for (int i = 0; i < 8; i++) { state = rainbow(state); }
@@ -395,26 +359,25 @@ struct rgb read_rgb(char data[], int first_digit) {
 // DEFAULTS
 //
 int mode = 8;
-struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
-struct rgb colour_halo = { 255, 69, 0 }; // daily driving orange
+int glode = 0;
+// struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
+// struct rgb colour_halo = { 255, 69, 0 }; // daily driving orange
 
-
-// struct rgb colour_strip = { 0, 255, 0 };
+struct rgb colour_strip = { 50, 50, 255 }; // cool blue
+struct rgb colour_halo = { 50, 50, 255 }; // cool blue
+struct rgb colour_glow = { 50, 50, 255 }; // cool blue
 
 // state for each mode that requires it
 //
 struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
-struct ps pulse_state = { false, { 255, 0, 0 } };
-struct ss start_state = { 32, 32, { 255, 69, 0 }, false, false };
+struct ss start_state = { 32, 32, { 50, 50, 255 }, false, false };
+struct sps { int driverBall; int passBall; }
+struct sps sparkle_state = { 50, 50 }
+int circle_state = 0;
 
 void loop() {
-  // we need to be able to accept a command that sets colour
-  // and mode
-  // and frequency (denseness of flows)
-  // and speed (refresh rate)
-
   // clear the input value
   memset(data, 0, 20);
 
@@ -424,7 +387,7 @@ void loop() {
     // wait before reading another byte, processor speed is faster than serial sending speed
     // so this ensures that we read 100% of an incoming command
     //
-    delay(1);
+    delay(1); // experiment - setting this to 2ms, commands are hit and miss
   }
 
   if (strlen(data) > 0) {
@@ -444,6 +407,9 @@ void loop() {
         case 'h': // set the halo
           colour_halo = read_rgb(data, 3);
           break;
+        case 'g': // set the glow
+          colour_glow = read_rgb(data, 3);
+          break;
         case ' ': // none specified, set both
           colour_strip = read_rgb(data, 2);
           colour_halo = colour_strip;
@@ -458,8 +424,7 @@ void loop() {
       solid_colour_mode(colour_strip, colour_halo);
       break;
     case 1:
-      // mode 1 - solid colour moving fade
-      pulse_state = pulse_mode(colour_strip, 6, pulse_state);
+      // mode 1 - unused
       break;
     case 2:
       // mode 2 - single colour liquid fill
@@ -470,13 +435,13 @@ void loop() {
       bounce_state = bounce_mode(true, 8, colour_halo, bounce_state);
       break;
     case 4:
-      // mode 4 - dual colour snake
+      // mode 4 - unused
       break;
     case 5:
-      // mode 5 -
+      // mode 5 - unused
       break;
     case 6:
-      // mode 6 - single colour strobe
+      // mode 6 - unused
       break;
     case 7:
       // mode 7 - rainbow, baby
@@ -496,7 +461,63 @@ void loop() {
 
       break;
   }
+
+  // do something with the underglow
+  //
+  switch(glode) {
+    case 0: // just glowin'
+      for (int led = 0; led < GLOW_LEDS; led++) {
+        glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+      }
+      FastLED.show();
+      break;
+    case 1: // circling the car
+      // turn everything off
+      for (int led = 0; led < GLOW_LEDS; led++) {
+          glow_leds[led] = CRGB(0, 0, 0);
+      }
+      // only turn on circle_state with a margin of 2 leds on each side
+      for (int led = 0; led < GLOW_LEDS; led++) {
+        if (led == circle_state) {
+            glow_leds[led - 2] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+            glow_leds[led - 1] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+            glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+            glow_leds[led + 1] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+            glow_leds[led + 2] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+        }
+      }
+
+      if (circle_state >= GLOW_LEDS) circle_state = 0;
+      circle_state++;
+
+      FastLED.show();
+      break;
+    case 2: // sparkles originating from front
+      for (int led = 0; led < GLOW_LEDS; led++) {
+        if (led == sparkle_state.driverBall || led == sparkle_state.passBall) {
+          glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+        } else {
+          glow_leds[led] = CRGB(0, 0, 0);
+        }
+      }
+
+      FRONT_CENTER_OFFSET = 50
+      REAR_CENTER_OFFSET = 40
+
+      if (sparkle_state.driverBall == 0) // patch for making it jump over the drivers wheel
+        sparkle_state.driverBall = GLOW_LEDS
+
+      if (sparkle_state.driverBall == (GLOW_LEDS - REAR_CENTER_OFFSET))
+        sparkle_state.driverBall = FRONT_CENTER_OFFSET
+      if (sparkle_state.passBall == (GLOW_LEDS - REAR_CENTER_OFFSET))
+        sparkle_state.passBall = FRONT_CENTER_OFFSET
+
+      sparkle_state.driverBall--
+      sparkle_state.passBall++
+      FastLED.show()
+      break;
+  }
   // wait before we do it again
   //
-  delay(15);
+  // delay(2);
 }
