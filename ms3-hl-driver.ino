@@ -39,7 +39,7 @@ struct rgb {
 
 void solid_colour_mode(struct rgb strip, struct rgb halo) {
 
-  set the led strip colour
+  // set the led strip colour
 
   for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
     pass_leds[led] = CRGB(strip.r, strip.g, strip.b);
@@ -359,12 +359,12 @@ struct rgb read_rgb(char data[], int first_digit) {
 // DEFAULTS
 //
 int mode = 8;
-int glode = 0;
+int glode = 2;
 // struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
 // struct rgb colour_halo = { 255, 69, 0 }; // daily driving orange
 
-struct rgb colour_strip = { 50, 50, 255 }; // cool blue
-struct rgb colour_halo = { 50, 50, 255 }; // cool blue
+struct rgb colour_strip = { 180, 180, 255 }; // cool blue
+struct rgb colour_halo = { 180, 180, 255 }; // cool blue
 struct rgb colour_glow = { 50, 50, 255 }; // cool blue
 
 // state for each mode that requires it
@@ -372,9 +372,9 @@ struct rgb colour_glow = { 50, 50, 255 }; // cool blue
 struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
-struct ss start_state = { 32, 32, { 50, 50, 255 }, false, false };
-struct sps { int driverBall; int passBall; }
-struct sps sparkle_state = { 50, 50 }
+struct ss start_state = { 32, 32, { 180, 180, 255 }, false, false };
+struct sps { int driverBall; int passBall; };
+struct sps sparkle_state = { 50, 50 } ;
 int circle_state = 0;
 
 void loop() {
@@ -477,18 +477,18 @@ void loop() {
           glow_leds[led] = CRGB(0, 0, 0);
       }
       // only turn on circle_state with a margin of 2 leds on each side
-      for (int led = 0; led < GLOW_LEDS; led++) {
+      for (int led = 0; led <= GLOW_LEDS; led++) {
         if (led == circle_state) {
-            glow_leds[led - 2] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
-            glow_leds[led - 1] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+            // glow_leds[led - 2] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+            // glow_leds[led - 1] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
             glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
             glow_leds[led + 1] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
             glow_leds[led + 2] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
         }
       }
+      circle_state++;
 
       if (circle_state >= GLOW_LEDS) circle_state = 0;
-      circle_state++;
 
       FastLED.show();
       break;
@@ -501,20 +501,24 @@ void loop() {
         }
       }
 
-      FRONT_CENTER_OFFSET = 50
-      REAR_CENTER_OFFSET = 40
+      int FRONT_CENTER_OFFSET = 30;
+      int REAR_CENTER_OFFSET = 69;
 
       if (sparkle_state.driverBall == 0) // patch for making it jump over the drivers wheel
-        sparkle_state.driverBall = GLOW_LEDS
+        sparkle_state.driverBall = GLOW_LEDS;
 
-      if (sparkle_state.driverBall == (GLOW_LEDS - REAR_CENTER_OFFSET))
-        sparkle_state.driverBall = FRONT_CENTER_OFFSET
-      if (sparkle_state.passBall == (GLOW_LEDS - REAR_CENTER_OFFSET))
-        sparkle_state.passBall = FRONT_CENTER_OFFSET
+      if (sparkle_state.driverBall == (GLOW_LEDS - REAR_CENTER_OFFSET)) {
+        sparkle_state.driverBall = FRONT_CENTER_OFFSET;
+        sparkle_state.passBall = FRONT_CENTER_OFFSET;
+      }
+      if (sparkle_state.passBall == (GLOW_LEDS - REAR_CENTER_OFFSET)) {
+        sparkle_state.passBall = FRONT_CENTER_OFFSET;
+        sparkle_state.driverBall = FRONT_CENTER_OFFSET;
+      }
 
-      sparkle_state.driverBall--
-      sparkle_state.passBall++
-      FastLED.show()
+      sparkle_state.driverBall--;
+      sparkle_state.passBall++;
+      FastLED.show();
       break;
   }
   // wait before we do it again
