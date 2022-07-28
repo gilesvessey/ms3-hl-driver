@@ -359,13 +359,14 @@ struct rgb read_rgb(char data[], int first_digit) {
 // DEFAULTS
 //
 int mode = 8;
-int glode = 2;
+int glode = 4;
 // struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
 // struct rgb colour_halo = { 255, 69, 0 }; // daily driving orange
 
 struct rgb colour_strip = { 180, 180, 255 }; // cool blue
 struct rgb colour_halo = { 180, 180, 255 }; // cool blue
-struct rgb colour_glow = { 50, 50, 255 }; // cool blue
+struct rgb colour_glow = { 60, 60, 255 }; // cool blue
+struct rgb colour_glow_alt = { 255, 69, 0 }; // orange
 
 // state for each mode that requires it
 //
@@ -373,9 +374,11 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ss start_state = { 32, 32, { 180, 180, 255 }, false, false };
-struct sps { int driverBall; int passBall; };
-struct sps sparkle_state = { 50, 50 } ;
+struct cs { int driverBall; int passBall; boolean alt; };
+struct cs chase_state = { 30, 30, false } ;
 int circle_state = 0;
+int FRONT_CENTER_OFFSET = 30;
+int REAR_CENTER_OFFSET = 69;
 
 void loop() {
   // clear the input value
@@ -399,6 +402,13 @@ void loop() {
       //
       mode = data[2] - '0';
     }
+    if (data[0] == 'g' || data[0] == 'G') {
+
+      // set the glow mode, 'g 0'
+      //
+      glode = data[2] - '0';
+    }
+
     if (data[0] == 'c' || data[0] == 'C') {
       switch(data[1]) {
         case 's': // set the strip
@@ -408,7 +418,10 @@ void loop() {
           colour_halo = read_rgb(data, 3);
           break;
         case 'g': // set the glow
-          colour_glow = read_rgb(data, 3);
+          if (data[2] == 'a')  // alt glow colour
+            colour_glow_alt = read_rgb(data, 4);
+          else  // primary glow colour
+            colour_glow = read_rgb(data, 3);
           break;
         case ' ': // none specified, set both
           colour_strip = read_rgb(data, 2);
@@ -473,7 +486,7 @@ void loop() {
       break;
     case 1: // circling the car
       // turn everything off
-      for (int led = 0; led < GLOW_LEDS; led++) {
+      for (int led = 0; led <= GLOW_LEDS; led++) {
           glow_leds[led] = CRGB(0, 0, 0);
       }
       // only turn on circle_state with a margin of 2 leds on each side
@@ -494,34 +507,58 @@ void loop() {
       break;
     case 2: // sparkles originating from front
       for (int led = 0; led < GLOW_LEDS; led++) {
-        if (led == sparkle_state.driverBall || led == sparkle_state.passBall) {
+        if (led == chase_state.driverBall || led == chase_state.passBall) {
           glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
         } else {
           glow_leds[led] = CRGB(0, 0, 0);
         }
       }
 
-      int FRONT_CENTER_OFFSET = 30;
-      int REAR_CENTER_OFFSET = 69;
+      if (chase_state.driverBall == 0) // patch for making it jump over the drivers wheel
+        chase_state.driverBall = GLOW_LEDS;
 
-      if (sparkle_state.driverBall == 0) // patch for making it jump over the drivers wheel
-        sparkle_state.driverBall = GLOW_LEDS;
-
-      if (sparkle_state.driverBall == (GLOW_LEDS - REAR_CENTER_OFFSET)) {
-        sparkle_state.driverBall = FRONT_CENTER_OFFSET;
-        sparkle_state.passBall = FRONT_CENTER_OFFSET;
+      if (chase_state.driverBall == (GLOW_LEDS - REAR_CENTER_OFFSET)) {
+        chase_state.driverBall = FRONT_CENTER_OFFSET;
+        chase_state.passBall = FRONT_CENTER_OFFSET;
       }
-      if (sparkle_state.passBall == (GLOW_LEDS - REAR_CENTER_OFFSET)) {
-        sparkle_state.passBall = FRONT_CENTER_OFFSET;
-        sparkle_state.driverBall = FRONT_CENTER_OFFSET;
+      if (chase_state.passBall == (GLOW_LEDS - REAR_CENTER_OFFSET)) {
+        chase_state.passBall = FRONT_CENTER_OFFSET;
+        chase_state.driverBall = FRONT_CENTER_OFFSET;
       }
 
-      sparkle_state.driverBall--;
-      sparkle_state.passBall++;
+      chase_state.driverBall--;
+      chase_state.passBall++;
+      FastLED.show();
+      break;
+    case 3: // colour chasing mode
+      for (int led = 0; led < GLOW_LEDS; led++) {
+        if (led == chase_state.driverBall || led == chase_state.passBall) {
+          if (chase_state.alt == false)
+          glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
+          else
+            glow_leds[led] = CRGB(colour_glow_alt.r, colour_glow_alt.g, colour_glow_alt.b);
+        }
+      }
+
+      if (chase_state.driverBall == 0) // patch for making it jump over the drivers wheel
+        chase_state.driverBall = GLOW_LEDS;
+
+      if (chase_state.driverBall == (GLOW_LEDS - REAR_CENTER_OFFSET)) {
+        chase_state.driverBall = FRONT_CENTER_OFFSET;
+        chase_state.passBall = FRONT_CENTER_OFFSET;
+        if (chase_state.alt == false)
+          chase_state.alt = true;
+        else
+          chase_state.alt = false;
+        // chase_state.alt = !chase_state.alt; // c no likey
+      }
+
+      chase_state.driverBall--;
+      chase_state.passBall++;
       FastLED.show();
       break;
   }
   // wait before we do it again
   //
-  // delay(2);
+  delay(1);
 }
