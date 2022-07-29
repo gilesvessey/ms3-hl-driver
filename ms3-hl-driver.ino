@@ -16,17 +16,14 @@ CRGB driver_leds[ALL_LEDS];
 CRGB glow_leds[GLOW_LEDS];
 
 boolean NL = true;
-char data[20];
+char data[16];
 
 void setup() {
-  Serial.begin(9600);
   BTserial.begin(9600);
 
   FastLED.addLeds<WS2812, DRIVER_PIN, GRB>(driver_leds, ALL_LEDS);
   FastLED.addLeds<WS2812, PASS_PIN, GRB>(pass_leds, ALL_LEDS);
   FastLED.addLeds<WS2812, GLOW_PIN, GRB>(glow_leds, GLOW_LEDS);
-
-  Serial.println(F("ms3-hl-driver 1.0.0"));
 }
 
 // make a class that represents an RGB colour value
@@ -363,17 +360,19 @@ byte glode = 3;
 // struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
 // struct rgb colour_halo = { 255, 69, 0 }; // daily driving orange
 
-struct rgb colour_strip = { 180, 180, 255 }; // cool blue
-struct rgb colour_halo = { 180, 180, 255 }; // cool blue
-struct rgb colour_glow = { 60, 60, 255 }; // cool blue
-struct rgb colour_glow_alt = { 255, 69, 0 }; // orange
+struct rgb colour_strip = { 100, 100, 255 }; // cool blue
+struct rgb colour_halo = { 100, 100, 255 }; // cool blue
+struct rgb colour_glow = { 100, 100, 255 }; // cool blue
+// struct rgb colour_glow_alt = { 180, 50, 110 }; // orange
+struct rgb colour_glow_alt = { 255, 69, 0 }; // daily driving orange
+
 
 // state for each mode that requires it
 //
 struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
-struct ss start_state = { 32, 32, { 180, 180, 255 }, false, false };
+struct ss start_state = { 32, 32, { 100, 100, 255 }, false, false };
 struct cs { byte driverBall; byte passBall; boolean alt; };
 struct cs chase_state = { 30, 30, false } ;
 byte circle_state = 0;
@@ -382,7 +381,11 @@ byte REAR_CENTER_OFFSET = 69;
 
 void loop() {
   // clear the input value
-  memset(data, 0, 20);
+  memset(data, 0, 16);
+
+  // new approach for reading incoming serial data
+  // every loop we read one character, when it is no longer available, only then
+  // do we execute the command
 
   // gather the input string
   for (byte i = 0; BTserial.available(); i++) {
@@ -560,5 +563,5 @@ void loop() {
   }
   // wait before we do it again
   //
-  delay(5);
+  delay(7);
 }
