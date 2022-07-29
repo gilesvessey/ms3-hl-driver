@@ -26,29 +26,29 @@ void setup() {
   FastLED.addLeds<WS2812, PASS_PIN, GRB>(pass_leds, ALL_LEDS);
   FastLED.addLeds<WS2812, GLOW_PIN, GRB>(glow_leds, GLOW_LEDS);
 
-  Serial.println("ms3-hl-driver 1.0.0");
+  Serial.println(F("ms3-hl-driver 1.0.0"));
 }
 
 // make a class that represents an RGB colour value
 //
 struct rgb {
-  int r;
-  int g;
-  int b;
+  byte r;
+  byte g;
+  byte b;
 };
 
 void solid_colour_mode(struct rgb strip, struct rgb halo) {
 
   // set the led strip colour
 
-  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
+  for (byte led = HALO_LEDS; led < ALL_LEDS; led++) {
     pass_leds[led] = CRGB(strip.r, strip.g, strip.b);
     driver_leds[led] = CRGB(strip.r, strip.g, strip.b);
   }
 
   // set the halo colour
   //
-  for (int led = 0; led < HALO_LEDS; led++) {
+  for (byte led = 0; led < HALO_LEDS; led++) {
     pass_leds[led] = CRGB(halo.r, halo.g, halo.b);
     driver_leds[led] = CRGB(strip.r, strip.g, strip.b);
   }
@@ -56,12 +56,12 @@ void solid_colour_mode(struct rgb strip, struct rgb halo) {
   FastLED.show();
 }
 
-struct ls { int pool; int drip; };
+struct ls { byte pool; byte drip; };
 struct ls liquid_fill_mode(struct rgb strip, struct rgb halo, double speed, struct ls state) {
   // TODO adjustable drip size, animation takes a long time and will only take longer with 144/m
   //
 
-  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
+  for (byte led = HALO_LEDS; led < ALL_LEDS; led++) {
     if (led < state.pool) {
 
       // render the pool at one end
@@ -105,7 +105,7 @@ struct ls liquid_fill_mode(struct rgb strip, struct rgb halo, double speed, stru
 
   // set the halo colour
   //
-  for (int led = 0; led < HALO_LEDS; led++) {
+  for (byte led = 0; led < HALO_LEDS; led++) {
     pass_leds[led] = CRGB(halo.r, halo.g, halo.b);
     driver_leds[led] = CRGB(halo.r, halo.g, halo.b);
   }
@@ -113,14 +113,14 @@ struct ls liquid_fill_mode(struct rgb strip, struct rgb halo, double speed, stru
   return state;
 }
 
-struct bs { int ball; bool rising; struct rgb curr; };
-struct bs bounce_mode(bool isRainbow, int frequency, struct rgb halo, struct bs state) {
+struct bs { byte ball; bool rising; struct rgb curr; };
+struct bs bounce_mode(bool isRainbow, byte frequency, struct rgb halo, struct bs state) {
   if (isRainbow)
-    for (int i = 0; i < frequency; i++) state.curr = rainbow(state.curr);
+    for (byte i = 0; i < frequency; i++) state.curr = rainbow(state.curr);
 
   // set the strip
   //
-  for (int led = HALO_LEDS; led < ALL_LEDS; led++) {
+  for (byte led = HALO_LEDS; led < ALL_LEDS; led++) {
     if (led == state.ball) {
       driver_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
       pass_leds[led] = CRGB(state.curr.r, state.curr.g, state.curr.b);
@@ -133,7 +133,7 @@ struct bs bounce_mode(bool isRainbow, int frequency, struct rgb halo, struct bs 
 
   // set the halo
   //
-  for (int led = 0; led < HALO_LEDS; led++) {
+  for (byte led = 0; led < HALO_LEDS; led++) {
     driver_leds[led] = CRGB(halo.r, halo.g, halo.b);
     pass_leds[led] = CRGB(halo.r, halo.g, halo.b);
   }
@@ -186,37 +186,37 @@ struct rgb rainbow(struct rgb value) {
   }
 }
 
-struct rgb rainbow_mode(double speed, int frequency, struct rgb state) {
+struct rgb rainbow_mode(double speed, byte frequency, struct rgb state) {
   struct rgb colour = state;
 
-  for (int led = 0; led < ALL_LEDS; led++) {
+  for (byte led = 0; led < ALL_LEDS; led++) {
     pass_leds[led] = CRGB(colour.r, colour.g, colour.b);
     driver_leds[led] = CRGB(colour.r, colour.g, colour.b);
 
 
     // this is how tightly packed the rainbow will be
     //
-    for (int i = 0; i < frequency; i++) { colour = rainbow(colour); }
+    for (byte i = 0; i < frequency; i++) { colour = rainbow(colour); }
   }
 
-    for (int led = 0; led < GLOW_LEDS; led++) {
+    for (byte led = 0; led < GLOW_LEDS; led++) {
       glow_leds[led] = CRGB(colour.r, colour.g, colour.b);
 
 
     // this is how tightly packed the rainbow will be
     //
-    for (int i = 0; i < frequency; i++) { colour = rainbow(colour); }
+    for (byte i = 0; i < frequency; i++) { colour = rainbow(colour); }
   }
 
 
   FastLED.show();
 
-  for (int i = 0; i < 8; i++) { state = rainbow(state); }
+  for (byte i = 0; i < 8; i++) { state = rainbow(state); }
 
   return state;
 }
 
-int loop_de_loop(boolean isPassSide, int pos) {
+byte loop_de_loop(boolean isPassSide, byte pos) {
   if (isPassSide && pos > 0 && pos <= 31)  // reverse the halo for the pass side
     pos--;
   else
@@ -239,7 +239,7 @@ int loop_de_loop(boolean isPassSide, int pos) {
   return pos;
 }
 
-int loop_de_loop_reverse(boolean isPassSide, int pos) {
+byte loop_de_loop_reverse(boolean isPassSide, byte pos) {
   if (isPassSide && pos > 0 && pos <= 31)  // reverse the halo for the pass side
     pos++;
   else
@@ -262,17 +262,17 @@ int loop_de_loop_reverse(boolean isPassSide, int pos) {
   return pos;
 }
 
-struct ss { int driverBall; int passBall; struct rgb curr; boolean isFinale; boolean done; };
+struct ss { byte driverBall; byte passBall; struct rgb curr; boolean isFinale; boolean done; };
 struct ss start_mode(struct ss state) {
-  int offset = 5;
-  for (int led = 0; led < ALL_LEDS; led++) {
+  byte offset = 5;
+  for (byte led = 0; led < ALL_LEDS; led++) {
     // munge the led position for the halos
     //
-    int offset = 5;
-    int pass_offset_led = led;
-    int driver_offset_led = led;
+    byte offset = 5;
+    byte pass_offset_led = led;
+    byte driver_offset_led = led;
     if (led <= 31) {
-      for (int i = 0; i < offset; i++) {
+      for (byte i = 0; i < offset; i++) {
         if (pass_offset_led == 31)
           pass_offset_led = 0;
         else
@@ -318,22 +318,22 @@ struct ss start_mode(struct ss state) {
   return state;
 }
 
-struct rgb read_rgb(char data[], int first_digit) {
+struct rgb read_rgb(char data[], byte first_digit) {
   // set the colour, 'c 255 0 255'
   //
-  struct rgb colour = { 256, 256, 256 };
+  struct rgb colour = { 69, 69, 69 };
   // clear the buffer for the next colour change
   //
   char buff[4];
   memset(buff, 0, 4);
   // convoluted way of reading three integers delimited by spaces
   //
-  for (int i = first_digit; i < strlen(data); i++) {
+  for (byte i = first_digit; i < strlen(data); i++) {
     if (data[i] == ' ') {
       buff[strlen(buff)] = '\0';
-      if (colour.r == 256) colour.r = atoi(buff);
-      else if (colour.g == 256) colour.g = atoi(buff);
-      else if (colour.b == 256) colour.b = atoi(buff);
+      if (colour.r == 69) colour.r = atoi(buff);
+      else if (colour.g == 69) colour.g = atoi(buff);
+      else if (colour.b == 69) colour.b = atoi(buff);
       // clear the buffer for the next number
       //
       memset(buff, 0, 4);
@@ -358,8 +358,8 @@ struct rgb read_rgb(char data[], int first_digit) {
 
 // DEFAULTS
 //
-int mode = 8;
-int glode = 4;
+byte mode = 8;
+byte glode = 3;
 // struct rgb colour_strip = { 255, 69, 0 }; // daily driving orange
 // struct rgb colour_halo = { 255, 69, 0 }; // daily driving orange
 
@@ -374,18 +374,18 @@ struct ls liquid_state = { HALO_LEDS, ALL_LEDS };
 struct rgb rainbow_state = { 255, 0, 0 };
 struct bs bounce_state = { 0, true, { 255, 0, 0 } };
 struct ss start_state = { 32, 32, { 180, 180, 255 }, false, false };
-struct cs { int driverBall; int passBall; boolean alt; };
+struct cs { byte driverBall; byte passBall; boolean alt; };
 struct cs chase_state = { 30, 30, false } ;
-int circle_state = 0;
-int FRONT_CENTER_OFFSET = 30;
-int REAR_CENTER_OFFSET = 69;
+byte circle_state = 0;
+byte FRONT_CENTER_OFFSET = 30;
+byte REAR_CENTER_OFFSET = 69;
 
 void loop() {
   // clear the input value
   memset(data, 0, 20);
 
   // gather the input string
-  for (int i = 0; BTserial.available(); i++) {
+  for (byte i = 0; BTserial.available(); i++) {
     data[i] = BTserial.read();
     // wait before reading another byte, processor speed is faster than serial sending speed
     // so this ensures that we read 100% of an incoming command
@@ -394,8 +394,8 @@ void loop() {
   }
 
   if (strlen(data) > 0) {
-    Serial.println("Received data via bluetooth:");
-    Serial.println(data);
+    // Serial.println("Received data via bluetooth:");
+    // Serial.println(data);
     if (data[0] == 'm' || data[0] == 'M') {
 
       // set the mode, 'm 0'
@@ -479,18 +479,18 @@ void loop() {
   //
   switch(glode) {
     case 0: // just glowin'
-      for (int led = 0; led < GLOW_LEDS; led++) {
+      for (byte led = 0; led < GLOW_LEDS; led++) {
         glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
       }
       FastLED.show();
       break;
     case 1: // circling the car
       // turn everything off
-      for (int led = 0; led <= GLOW_LEDS; led++) {
+      for (byte led = 0; led <= GLOW_LEDS; led++) {
           glow_leds[led] = CRGB(0, 0, 0);
       }
       // only turn on circle_state with a margin of 2 leds on each side
-      for (int led = 0; led <= GLOW_LEDS; led++) {
+      for (byte led = 0; led <= GLOW_LEDS; led++) {
         if (led == circle_state) {
             // glow_leds[led - 2] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
             // glow_leds[led - 1] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
@@ -506,7 +506,7 @@ void loop() {
       FastLED.show();
       break;
     case 2: // sparkles originating from front
-      for (int led = 0; led < GLOW_LEDS; led++) {
+      for (byte led = 0; led < GLOW_LEDS; led++) {
         if (led == chase_state.driverBall || led == chase_state.passBall) {
           glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
         } else {
@@ -531,7 +531,7 @@ void loop() {
       FastLED.show();
       break;
     case 3: // colour chasing mode
-      for (int led = 0; led < GLOW_LEDS; led++) {
+      for (byte led = 0; led < GLOW_LEDS; led++) {
         if (led == chase_state.driverBall || led == chase_state.passBall) {
           if (chase_state.alt == false)
           glow_leds[led] = CRGB(colour_glow.r, colour_glow.g, colour_glow.b);
@@ -560,5 +560,5 @@ void loop() {
   }
   // wait before we do it again
   //
-  delay(1);
+  delay(5);
 }
